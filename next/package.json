@@ -1,0 +1,6 @@
+{
+  "name": "@crispice/universal-content/next",
+  "types": "../dist/next.d.ts",
+  "main": "../dist/next.cjs",
+  "module": "../dist/next.js"
+}

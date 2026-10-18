@@ -1,0 +1,6 @@
+{
+  "name": "@crispice/universal-content/wordpress",
+  "types": "../dist/wordpress.d.ts",
+  "main": "../dist/wordpress.cjs",
+  "module": "../dist/wordpress.js"
+}

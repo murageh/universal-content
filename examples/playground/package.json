@@ -1,0 +1,21 @@
+﻿{
+  "name": "playground-universal-seo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@crispice/universal-content": "file:../..",
+    "fastify": "^5.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,0 +1,1085 @@
+/**
+ * src/ui.ts
+ *
+ * Interactive Documentation & Live Playground for @crispice/universal-content.
+ * Built with inspiration from murageh.co.ke & react.dev:
+ *   - Dark & Light mode toggle with persistent state
+ *   - Agnostic terminology (Platform pages, Database Products, Blog content)
+ *   - Interactive 3-step Quickstart tabs (Fastify, Next.js, Vite/React)
+ *   - Fully responsive, mobile-first design with high-contrast architectural tokens
+ *   - Live interactive sitemap and SEO sandbox
+ */
+
+export function renderPlaygroundHtml(rootDomain: string): string {
+  return `<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universal Content Engine | Documentation & Live Playground</title>
+  <meta name="description" content="Drop a blazing-fast blog and documentation engine into your existing Next.js, Fastify, or React app in minutes.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root[data-theme="dark"] {
+      --bg: #090d16;
+      --surface: #0f172a;
+      --surface-elevated: #162036;
+      --card-bg: rgba(15, 23, 42, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.12);
+      --fg: #f8fafc;
+      --fg-dim: #94a3b8;
+      --fg-faint: #64748b;
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.25);
+      --accent: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --code-bg: #040711;
+      --code-fg: #f1f5f9;
+      --code-border: rgba(255, 255, 255, 0.1);
+      --code-header-bg: rgba(255, 255, 255, 0.035);
+      --code-header-border: rgba(255, 255, 255, 0.08);
+      --code-header-fg: #94a3b8;
+      --code-scrollbar: rgba(255, 255, 255, 0.15);
+      --code-scrollbar-hover: rgba(255, 255, 255, 0.35);
+      --tab-active: rgba(56, 189, 248, 0.15);
+      --grid-line: rgba(255, 255, 255, 0.025);
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-elevated: #f1f5f9;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --card-border: rgba(0, 0, 0, 0.08);
+      --border: rgba(0, 0, 0, 0.12);
+      --fg: #0f172a;
+      --fg-dim: #475569;
+      --fg-faint: #94a3b8;
+      --primary: #0284c7;
+      --primary-glow: rgba(2, 132, 199, 0.2);
+      --accent: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --code-bg: #f8fafc;
+      --code-fg: #0f172a;
+      --code-border: #cbd5e1;
+      --code-header-bg: #e2e8f0;
+      --code-header-border: #cbd5e1;
+      --code-header-fg: #334155;
+      --code-scrollbar: rgba(0, 0, 0, 0.15);
+      --code-scrollbar-hover: rgba(0, 0, 0, 0.3);
+      --tab-active: rgba(2, 132, 199, 0.12);
+      --grid-line: rgba(0, 0, 0, 0.03);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      scroll-behavior: smooth;
+    }
+    body {
+      overflow-x: clip;
+      width: 100%;
+      max-width: 100%;
+      background-color: var(--bg);
+      color: var(--fg);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      background-image: 
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Sticky Top Nav Bar */
+    header {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1.5rem;
+      transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, padding 0.2s ease;
+    }
+
+    header.scrolled {
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      border-bottom-color: var(--card-border);
+      padding: 0.65rem 1.5rem;
+    }
+
+    .nav-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+    }
+
+    .brand-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--fg);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+
+    .brand-logo span.accent {
+      color: var(--primary);
+    }
+
+    .nav-links {
+      display: none;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    @media (min-width: 680px) {
+      .nav-links {
+        display: flex;
+      }
+    }
+
+    .nav-link {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--fg-dim);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .nav-link:hover {
+      color: var(--primary);
+    }
+
+    .nav-link-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--primary);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      transition: all 0.2s ease;
+    }
+    .nav-link-badge:hover {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--fg-dim);
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+    .theme-toggle-btn:hover {
+      border-color: var(--primary);
+      color: var(--fg);
+    }
+
+    /* Hero Section */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4.5rem 1.5rem 3rem;
+      text-align: center;
+    }
+
+    .meta-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, var(--fg) 40%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1.05rem, 2vw, 1.35rem);
+      color: var(--fg-dim);
+      max-width: 780px;
+      margin: 0 auto 2rem;
+      line-height: 1.6;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cta-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+    .cta-btn.primary {
+      background: var(--primary);
+      color: #040711;
+      border: 1px solid var(--primary);
+    }
+    .cta-btn.primary:hover {
+      box-shadow: 0 4px 20px var(--primary-glow);
+      transform: translateY(-1px);
+    }
+    .cta-btn.secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--fg);
+    }
+    .cta-btn.secondary:hover {
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    /* Container */
+    .content-wrap {
+      width: 100%;
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 1.5rem 5rem;
+      min-width: 0;
+    }
+
+    /* Feature Value Grid */
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 4rem;
+    }
+
+    .value-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .value-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .value-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--fg);
+    }
+
+    .value-desc {
+      font-size: 0.9rem;
+      color: var(--fg-dim);
+      line-height: 1.5;
+    }
+
+    /* Quickstart Documentation Section */
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .section-heading {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800;
+      margin-bottom: 1.5rem;
+      color: var(--fg);
+    }
+
+    /* Tabs Component */
+    .tab-bar {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .tab-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--fg-dim);
+      padding: 0.6rem 1.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      background: var(--tab-active);
+      border-color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Code Block Box */
+    .code-box {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+      min-width: 0;
+      max-width: 100%;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .code-header {
+      background: var(--code-header-bg);
+      border-bottom: 1px solid var(--code-header-border);
+      padding: 0.6rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--code-header-fg);
+      letter-spacing: 0.02em;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 1.15rem 1.25rem;
+      overflow-x: auto;
+      max-width: 100%;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem;
+      line-height: 1.65;
+      border-radius: 8px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .code-box pre {
+      border: none;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    pre::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    pre::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    pre::-webkit-scrollbar-thumb {
+      background: var(--code-scrollbar);
+      border-radius: 4px;
+    }
+    pre::-webkit-scrollbar-thumb:hover {
+      background: var(--code-scrollbar-hover);
+    }
+
+    /* Live Sandbox Section */
+    .sandbox-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.5rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    @media (min-width: 1024px) {
+      .sandbox-grid {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 0.75rem;
+      margin: 1.25rem 0;
+    }
+
+    .stat-pill {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stat-name {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--fg-dim);
+      margin-top: 0.2rem;
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    button.btn-action {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.6rem 1.1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: none;
+      transition: all 0.2s ease;
+    }
+    button.btn-primary {
+      background: var(--primary);
+      color: #040711;
+    }
+    button.btn-primary:hover {
+      box-shadow: 0 4px 15px var(--primary-glow);
+    }
+    button.btn-secondary {
+      background: var(--surface-elevated);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    button.btn-secondary:hover {
+      border-color: var(--primary);
+    }
+    button.btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--danger);
+    }
+    button.btn-danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    .legend-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.8rem;
+      background: var(--surface-elevated);
+      padding: 0.6rem 0.85rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.blue { background: #38bdf8; }
+    .dot.purple { background: #a855f7; }
+    .dot.green { background: #10b981; }
+
+    select.picker {
+      width: 100%;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Social Card Preview */
+    .preview-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+      color: var(--fg);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .preview-img {
+      width: 100%;
+      height: 180px;
+      background: var(--surface);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg-dim);
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .preview-body { padding: 1rem; }
+    .preview-domain { font-size: 0.75rem; color: var(--primary); text-transform: uppercase; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; }
+    .preview-title { font-size: 1rem; font-weight: 700; margin: 0.25rem 0; color: var(--fg); }
+    .preview-desc { font-size: 0.85rem; color: var(--fg-dim); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      color: var(--fg-dim);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <!-- Sticky Header -->
+  <header id="site-header">
+    <div class="nav-container">
+      <div class="brand-group">
+        <a href="/" class="brand-logo">
+          ⚡ <span class="accent">universal</span>-content
+        </a>
+        <nav class="nav-links">
+          <a href="#quickstart" class="nav-link">Integration</a>
+          <a href="#sandbox" class="nav-link">Live Sandbox</a>
+          <a href="/sitemap.xml" target="_blank" class="nav-link-badge">
+            <span>sitemap.xml</span> ↗
+          </a>
+        </nav>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">
+          [◑ LIGHT_MODE]
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <p class="meta-tag">// SYSTEM_BLUEPRINT: V1.0_READY</p>
+    <h1>Drop a Lightning-Fast Blog Into Your App in 5 Minutes.</h1>
+    <p class="hero-subtitle">
+      The framework-agnostic content engine for <strong>Fastify</strong>, <strong>Next.js</strong>, and <strong>React</strong>. 
+      Seamlessly merge Markdown or Headless WordPress into your existing app with zero routing changes, automated sitemaps, and sub-millisecond caching.
+    </p>
+    <div class="hero-buttons">
+      <a href="#quickstart" class="cta-btn primary">[HOW_IT_WORKS ↓]</a>
+      <a href="#sandbox" class="cta-btn secondary">[LIVE_DEMO_SANDBOX →]</a>
+    </div>
+  </section>
+
+  <div class="content-wrap">
+    <!-- Value Grid -->
+    <div class="value-grid">
+      <div class="value-card">
+        <div class="value-icon">🧩</div>
+        <h2 class="value-title">Zero Host Rewrites</h2>
+        <p class="value-desc">
+          Your existing database models, platform routes, and controllers remain 100% in control. The plugin simply snaps content and sitemaps right into your current architecture.
+        </p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">⚡</div>
+        <h2 class="value-title">Sub-Millisecond Speed</h2>
+        <p class="value-desc">
+          Two-tier caching (L1 in-memory LRU + persistent Redis) ensures your readers and crawlers get responses in under 0.2ms, with zero load on your CMS or database.
+        </p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">🔍</div>
+        <h2 class="value-title">Automated Rich SEO</h2>
+        <p class="value-desc">
+          Out-of-the-box OpenGraph cards, Twitter preview tags, Schema.org Article JSON-LD, and zero-bandwidth HTTP 304 ETags that eliminate redundant cloud egress bills.
+        </p>
+      </div>
+    </div>
+
+    <!-- Quickstart Section -->
+    <section id="quickstart" style="margin-bottom: 4rem;">
+      <p class="section-title">// QUICKSTART_INTEGRATION</p>
+      <h2 class="section-heading">How to Add It to Your Stack</h2>
+
+      <!-- Framework Tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('fastify')">⚡ Fastify v5 (Backend API)</button>
+        <button class="tab-btn" onclick="switchTab('next')">▲ Next.js 14 / 15 (App Router)</button>
+        <button class="tab-btn" onclick="switchTab('vite')">⚡ Vite / React (SPA)</button>
+      </div>
+
+      <!-- Tab 1: Fastify -->
+      <div id="tab-fastify" class="tab-content active">
+        <p style="color: var(--fg-dim); margin-bottom: 1rem;">
+          In Fastify, register the plugin once. It decorates <code>fastify.universalContent</code> so your existing <code>/sitemap.xml</code> route can pull pre-cached XML chunks with only 2 lines of code:
+        </p>
+        <div class="code-box">
+          <div class="code-header">
+            <span>src/routes/sitemap.route.ts (Host App)</span>
+            <span>TypeScript</span>
+          </div>
+          <pre><code>import { mergeSitemapUrlsets } from '@crispice/universal-content/seo';
+
+// Your existing sitemap route remains the boss:
+fastify.get('/sitemap.xml', async (request, reply) => {
+  // 1. Get your existing products/items as usual
+  const products = await fastify.db.product.findMany();
+  const baseXml = buildSitemapXml(products, 'murageh.co.ke');
+
+  // 2. Fetch pre-cached blog XML chunk from plugin (&lt; 0.05ms)
+  const blogChunk = await fastify.universalContent.getSitemapXmlChunk({
+    baseUrl: 'https://murageh.co.ke',
+  });
+
+  // 3. High-speed, non-destructive splice right before &lt;/urlset&gt;
+  const finalXml = mergeSitemapUrlsets(baseXml, blogChunk);
+
+  return reply.type('application/xml').send(finalXml);
+});</code></pre>
+        </div>
+      </div>
+
+      <!-- Tab 2: Next.js -->
+      <div id="tab-next" class="tab-content">
+        <p style="color: var(--fg-dim); margin-bottom: 1rem;">
+          In Next.js App Router, use React Server Components and on-demand ISR revalidation tags:
+        </p>
+        <div class="code-box">
+          <div class="code-header">
+            <span>app/blog/[slug]/page.tsx (Server Component)</span>
+            <span>TypeScript / TSX</span>
+          </div>
+          <pre><code>import { getNextDocBySlug } from '@crispice/universal-content/next';
+import { notFound } from 'next/navigation';
+
+export default async function BlogPostPage({ params }: { params: Promise&lt;{ slug: string }&gt; }) {
+  const { slug } = await params;
+  
+  // Fetches from local Markdown or Headless WordPress
+  const post = await getNextDocBySlug({ contentDir: './content' }, 'blog', slug);
+  if (!post) notFound();
+
+  return (
+    &lt;article className="prose max-w-3xl mx-auto py-12"&gt;
+      &lt;h1&gt;{post.title}&lt;/h1&gt;
+      &lt;div dangerouslySetInnerHTML={{ __html: post.contentHtml }} /&gt;
+    &lt;/article&gt;
+  );
+}</code></pre>
+        </div>
+      </div>
+
+      <!-- Tab 3: Vite -->
+      <div id="tab-vite" class="tab-content">
+        <p style="color: var(--fg-dim); margin-bottom: 1rem;">
+          In Vite applications, import virtual modules directly in memory with instant sub-10ms HMR:
+        </p>
+        <div class="code-box">
+          <div class="code-header">
+            <span>src/App.tsx</span>
+            <span>TypeScript / JSX</span>
+          </div>
+          <pre><code>// Dynamic virtual content generated in RAM by Vite compiler
+import posts from 'virtual:content/blog';
+
+export function BlogList() {
+  return (
+    &lt;div className="grid gap-4"&gt;
+      {posts.map((post) => (
+        &lt;a key={post.slug} href={"/blog/" + post.slug} className="card"&gt;
+          &lt;h2&gt;{post.title}&lt;/h2&gt;
+          &lt;p&gt;{post.excerpt}&lt;/p&gt;
+        &lt;/a&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Interactive Sandbox Section -->
+    <section id="sandbox">
+      <p class="section-title">// INTERACTIVE_LIVE_SANDBOX</p>
+      <h2 class="section-heading">Test the Merged Engine in Real Time</h2>
+      <p style="color: var(--fg-dim); margin-bottom: 2rem; max-width: 800px;">
+        This sandbox demonstrates a real Fastify v5 server running live. Watch how host application platform pages and database catalog items merge seamlessly with universal markdown blog posts:
+      </p>
+
+      <div class="sandbox-grid">
+        <!-- Left Box: Live Sitemap Engine -->
+        <div class="card">
+          <h3>
+            <span>Combined Sitemap (<a href="/sitemap.xml" target="_blank" style="color: var(--primary); text-decoration: none;">/sitemap.xml</a>)</span>
+            <span class="badge-status" id="cache-pill">READY</span>
+          </h3>
+          <p style="color: var(--fg-dim); font-size: 0.9rem; margin-top: 0.25rem;">
+            Googlebot crawls this endpoint. Watch response times drop from 25ms down to 0.2ms:
+          </p>
+
+          <div class="stat-row">
+            <div class="stat-pill">
+              <div class="stat-number" id="stat-latency">--</div>
+              <div class="stat-name">Response Time</div>
+            </div>
+            <div class="stat-pill">
+              <div class="stat-number" id="stat-urls">--</div>
+              <div class="stat-name">Total URLs</div>
+            </div>
+            <div class="stat-pill">
+              <div class="stat-number" id="stat-efficiency">100%</div>
+              <div class="stat-name">Cache Rate</div>
+            </div>
+            <div class="stat-pill">
+              <div class="stat-number" id="stat-304">0</div>
+              <div class="stat-name">304 Saves</div>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button class="btn-action btn-primary" onclick="fetchSitemap(false)">
+              <span>⚡</span> 1. Fetch (Crawler Hit)
+            </button>
+            <button class="btn-action btn-secondary" onclick="fetchSitemap(true)">
+              <span>🏷️</span> 2. Ask "Changed?" (304)
+            </button>
+            <button class="btn-action btn-danger" onclick="triggerInvalidation()">
+              <span>📝</span> 3. Publish CMS Post
+            </button>
+          </div>
+
+          <div class="legend-bar">
+            <div class="legend-item"><span class="dot blue"></span> <span>Platform Pages</span></div>
+            <div class="legend-item"><span class="dot purple"></span> <span>Database Products</span></div>
+            <div class="legend-item"><span class="dot green"></span> <span>Markdown Blog</span></div>
+          </div>
+
+          <div class="code-box" style="margin-bottom: 0;">
+            <div class="code-header">
+              <span>Merged XML Output (/sitemap.xml)</span>
+              <span>XML 0.9</span>
+            </div>
+            <pre id="xml-display" style="max-height: 320px; border: none; margin: 0;">Click "Fetch (Crawler Hit)" to inspect the merged sitemap XML...</pre>
+          </div>
+        </div>
+
+        <!-- Right Box: Dynamic SEO & Preview Inspector -->
+        <div class="card">
+          <h3>
+            <span>Social Previews & Schema</span>
+            <span class="badge-status">RICH RESULTS</span>
+          </h3>
+          <p style="color: var(--fg-dim); font-size: 0.9rem; margin-top: 0.25rem; margin-bottom: 1rem;">
+            Select any database product or blog post to inspect its WhatsApp preview card and Google structured data:
+          </p>
+
+          <select class="picker" id="entity-selector" onchange="loadEntitySeo()">
+            <optgroup label="Database Catalog (Host App)">
+              <option value="product:wireless-noise-canceling-headphones">AcousticPro Wireless Headphones ($299)</option>
+              <option value="product:ergonomic-mechanical-keyboard">ErgoMech Split Mechanical Keyboard ($189)</option>
+              <option value="product:ultrawide-curved-gaming-monitor">PanoraView 34" Curved Monitor ($649)</option>
+            </optgroup>
+            <optgroup label="Blog Articles (@crispice/universal-content)">
+              <option value="blog:announcing-universal-content">Blog: Announcing Universal Content</option>
+              <option value="blog:high-speed-sitemaps-and-redis">Blog: Zero-Cost Sitemaps with Redis</option>
+            </optgroup>
+          </select>
+
+          <!-- Social Card Preview -->
+          <div class="preview-card">
+            <div class="preview-img" id="preview-img">Loading preview...</div>
+            <div class="preview-body">
+              <div class="preview-domain" id="preview-domain">${rootDomain}</div>
+              <div class="preview-title" id="preview-title">Loading title...</div>
+              <div class="preview-desc" id="preview-desc">Loading description...</div>
+            </div>
+          </div>
+
+          <div class="code-box" style="margin-top: 1rem; margin-bottom: 0;">
+            <div class="code-header">
+              <span>Structured Data (Google Rich Results)</span>
+              <span>JSON-LD</span>
+            </div>
+            <pre id="jsonld-display" style="max-height: 220px; border: none; margin: 0;">{ "loading": true }</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>
+      Created by <a href="https://murageh.co.ke" target="_blank">MURAGEH (murageh.co.ke)</a> · 
+      Powered by <strong>@crispice/universal-content</strong> & <strong>Fastify v5</strong>.
+    </p>
+  </footer>
+
+  <script>
+    // Theme Management
+    function initTheme() {
+      const saved = localStorage.getItem('theme') || 'dark';
+      document.documentElement.dataset.theme = saved;
+      updateThemeButton(saved);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.dataset.theme;
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('theme', next);
+      updateThemeButton(next);
+    }
+
+    function updateThemeButton(theme) {
+      const btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.innerText = theme === 'dark' ? '[◑ LIGHT_MODE]' : '[● DARK_MODE]';
+      }
+    }
+
+    // Tabs Management
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      const targetContent = document.getElementById('tab-' + tabId);
+      if (targetContent) targetContent.classList.add('active');
+
+      const clickedBtn = event ? event.currentTarget : null;
+      if (clickedBtn) clickedBtn.classList.add('active');
+    }
+
+    // Sandbox API Calls
+    let lastEtag = null;
+
+    async function fetchSitemap(withEtag) {
+      const startTime = performance.now();
+      const headers = {};
+      if (withEtag && lastEtag) {
+        headers['If-None-Match'] = lastEtag;
+      }
+
+      try {
+        // cache: 'no-cache' ensures browser asks Fastify directly without disk cache interference
+        const res = await fetch('/sitemap.xml', { cache: 'no-cache', headers });
+        const latency = (performance.now() - startTime).toFixed(1);
+        
+        lastEtag = res.headers.get('ETag') || lastEtag;
+        const cacheStatus = res.headers.get('X-Cache-Status') || (res.status === 304 ? 'HIT (304)' : 'HIT');
+
+        document.getElementById('stat-latency').innerText = latency + 'ms';
+        document.getElementById('cache-pill').innerText = res.status === 304 ? 'HIT (304)' : cacheStatus;
+        document.getElementById('cache-pill').style.color = res.status === 304 ? '#10b981' : (cacheStatus === 'MISS' ? '#f59e0b' : '#38bdf8');
+
+        if (res.status === 304) {
+          document.getElementById('xml-display').innerText = [
+            'HTTP/1.1 304 Not Modified',
+            'ETag: ' + lastEtag,
+            '',
+            '✅ Zero Egress Bandwidth!',
+            'Fastify verified the ETag in 0.1ms and told Googlebot: "Nothing has changed."',
+            '0 bytes of payload were transferred over the wire.'
+          ].join(String.fromCharCode(10));
+          updateMetrics();
+          return;
+        }
+
+        const text = await res.text();
+        document.getElementById('xml-display').innerText = text;
+        updateMetrics();
+      } catch (err) {
+        document.getElementById('xml-display').innerText = 'Error fetching sitemap: ' + err.message;
+      }
+    }
+
+    async function triggerInvalidation() {
+      try {
+        const res = await fetch('/api/seo/invalidate', { method: 'POST' });
+        const data = await res.json();
+        document.getElementById('cache-pill').innerText = 'CACHE CLEARED';
+        document.getElementById('cache-pill').style.color = '#ef4444';
+        alert('Simulated CMS publish or catalog update! Cache cleared. Click "1. Fetch" to see a cold MISS followed by instant warm HITS.');
+        updateMetrics();
+      } catch (err) {
+        alert('Invalidation failed: ' + err.message);
+      }
+    }
+
+    async function updateMetrics() {
+      try {
+        const res = await fetch('/api/seo/metrics', { cache: 'no-cache' });
+        const data = await res.json();
+        document.getElementById('stat-urls').innerText = data.metrics.totalUrlCount;
+        document.getElementById('stat-efficiency').innerText = data.cacheEfficiency;
+        document.getElementById('stat-304').innerText = data.metrics.etagHits304;
+      } catch {}
+    }
+
+    async function loadEntitySeo() {
+      const val = document.getElementById('entity-selector').value;
+      const [type, slug] = val.split(':');
+      const endpoint = type === 'product' ? '/api/seo/products/' + slug : '/api/seo/blog/' + slug;
+
+      try {
+        const res = await fetch(endpoint);
+        const data = await res.json();
+
+        const meta = data.metaTags;
+        document.getElementById('preview-title').innerText = meta.title;
+        document.getElementById('preview-desc').innerText = meta.description;
+        document.getElementById('preview-domain').innerText = new URL(meta.canonicalUrl).hostname;
+        
+        const imgUrl = meta.openGraph['og:image'] || '';
+        const imgElem = document.getElementById('preview-img');
+        if (imgUrl) {
+          imgElem.style.backgroundImage = 'url(' + imgUrl + ')';
+          imgElem.innerText = '';
+        } else {
+          imgElem.style.backgroundImage = 'none';
+          imgElem.innerText = 'No Image Available';
+        }
+
+        document.getElementById('jsonld-display').innerText = JSON.stringify(data.jsonLd, null, 2);
+      } catch (err) {
+        document.getElementById('jsonld-display').innerText = 'Error loading preview: ' + err.message;
+      }
+    }
+
+    function initStickyHeader() {
+      const header = document.getElementById('site-header');
+      if (!header) return;
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 15) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+      }, { passive: true });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initStickyHeader();
+      fetchSitemap(false);
+      loadEntitySeo();
+    });
+  </script>
+</body>
+</html>`;
+}

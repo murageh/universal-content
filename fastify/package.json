@@ -1,0 +1,6 @@
+{
+  "name": "@crispice/universal-content/fastify",
+  "types": "../dist/fastify.d.ts",
+  "main": "../dist/fastify.cjs",
+  "module": "../dist/fastify.js"
+}

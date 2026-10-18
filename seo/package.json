@@ -1,0 +1,6 @@
+{
+  "name": "@crispice/universal-content/seo",
+  "types": "../dist/seo.d.ts",
+  "main": "../dist/seo.cjs",
+  "module": "../dist/seo.js"
+}

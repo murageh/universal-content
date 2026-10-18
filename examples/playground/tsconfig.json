@@ -1,0 +1,19 @@
+﻿{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@crispice/universal-content": ["../../src/index.ts"],
+      "@crispice/universal-content/fastify": ["../../src/fastify.ts"],
+      "@crispice/universal-content/seo": ["../../src/seo.ts"],
+      "@crispice/universal-content/next": ["../../src/next.ts"],
+      "@crispice/universal-content/wordpress": ["../../src/wordpress.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}
