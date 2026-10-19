@@ -968,13 +968,19 @@ export function BlogList() {
     // Sandbox API Calls
     let lastEtag = null;
 
+    // Environment detection for static hosting (e.g. GitHub Pages) vs Fastify server
+    const IS_STATIC_HOST = window.location.hostname === 'playground.murageh.co.ke' ||
+                           window.location.hostname.endsWith('github.io') ||
+                           window.location.protocol === 'file:' ||
+                           !window.location.port;
+
     // Pre-computed fallback entities for zero-backend static environments (e.g. GitHub Pages)
     const STATIC_FALLBACK_ENTITIES = {
       'product:wireless-noise-canceling-headphones': {
         metaTags: {
           title: 'AcousticPro Wireless Noise-Canceling Headphones | Official Store',
           description: 'Studio-grade spatial audio, 40-hour battery life, and adaptive active noise cancellation.',
-          canonicalUrl: 'https://' + rootDomain + '/products/wireless-noise-canceling-headphones',
+          canonicalUrl: 'https://${rootDomain}/products/wireless-noise-canceling-headphones',
           openGraph: {
             'og:image': 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80'
           }
@@ -991,7 +997,7 @@ export function BlogList() {
             price: 299,
             priceCurrency: 'USD',
             availability: 'https://schema.org/InStock',
-            url: 'https://' + rootDomain + '/products/wireless-noise-canceling-headphones'
+            url: 'https://${rootDomain}/products/wireless-noise-canceling-headphones'
           },
           aggregateRating: {
             '@type': 'AggregateRating',
@@ -1004,7 +1010,7 @@ export function BlogList() {
         metaTags: {
           title: 'ErgoMech Split Mechanical Keyboard | Official Store',
           description: 'Hot-swappable custom tactile switches, programmable OLED screens, and ortholinear layout.',
-          canonicalUrl: 'https://' + rootDomain + '/products/ergonomic-mechanical-keyboard',
+          canonicalUrl: 'https://${rootDomain}/products/ergonomic-mechanical-keyboard',
           openGraph: {
             'og:image': 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80'
           }
@@ -1021,7 +1027,7 @@ export function BlogList() {
             price: 189,
             priceCurrency: 'USD',
             availability: 'https://schema.org/InStock',
-            url: 'https://' + rootDomain + '/products/ergonomic-mechanical-keyboard'
+            url: 'https://${rootDomain}/products/ergonomic-mechanical-keyboard'
           },
           aggregateRating: {
             '@type': 'AggregateRating',
@@ -1034,7 +1040,7 @@ export function BlogList() {
         metaTags: {
           title: 'PanoraView 34-inch Curved UltraWide Monitor | Official Store',
           description: '165Hz refresh rate, 1ms response time, HDR600 certified, and 1000R curvature for immersive engineering.',
-          canonicalUrl: 'https://' + rootDomain + '/products/ultrawide-curved-gaming-monitor',
+          canonicalUrl: 'https://${rootDomain}/products/ultrawide-curved-gaming-monitor',
           openGraph: {
             'og:image': 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&q=80'
           }
@@ -1051,7 +1057,7 @@ export function BlogList() {
             price: 649,
             priceCurrency: 'USD',
             availability: 'https://schema.org/InStock',
-            url: 'https://' + rootDomain + '/products/ultrawide-curved-gaming-monitor'
+            url: 'https://${rootDomain}/products/ultrawide-curved-gaming-monitor'
           },
           aggregateRating: {
             '@type': 'AggregateRating',
@@ -1064,7 +1070,7 @@ export function BlogList() {
         metaTags: {
           title: 'ElevatePro Solid Walnut Electric Standing Desk | Official Store',
           description: 'Dual-motor electric lift system, solid North American walnut desktop, and programmable memory presets.',
-          canonicalUrl: 'https://' + rootDomain + '/products/developer-standing-desk',
+          canonicalUrl: 'https://${rootDomain}/products/developer-standing-desk',
           openGraph: {
             'og:image': 'https://images.unsplash.com/photo-1595515106969-1ce29566ff1c?w=800&q=80'
           }
@@ -1081,7 +1087,7 @@ export function BlogList() {
             price: 899,
             priceCurrency: 'USD',
             availability: 'https://schema.org/InStock',
-            url: 'https://' + rootDomain + '/products/developer-standing-desk'
+            url: 'https://${rootDomain}/products/developer-standing-desk'
           },
           aggregateRating: {
             '@type': 'AggregateRating',
@@ -1094,9 +1100,9 @@ export function BlogList() {
         metaTags: {
           title: 'Announcing @crispice/universal-content: Multi-Tier Content Engine',
           description: 'Unified content engine for Next.js, Fastify, and Vite. Markdown frontmatter, Headless WordPress, and automated XML/image sitemaps.',
-          canonicalUrl: 'https://' + rootDomain + '/blog/announcing-universal-content',
+          canonicalUrl: 'https://${rootDomain}/blog/announcing-universal-content',
           openGraph: {
-            'og:image': 'https://' + rootDomain + '/assets/universal-content-banner.png'
+            'og:image': 'https://${rootDomain}/assets/universal-content-banner.png'
           }
         },
         jsonLd: {
@@ -1112,12 +1118,12 @@ export function BlogList() {
           publisher: {
             '@type': 'Organization',
             name: 'MURAGEH Systems',
-            url: 'https://' + rootDomain
+            url: 'https://${rootDomain}'
           },
           datePublished: '2026-10-18T00:00:00Z',
           mainEntityOfPage: {
             '@type': 'WebPage',
-            '@id': 'https://' + rootDomain + '/blog/announcing-universal-content'
+            '@id': 'https://${rootDomain}/blog/announcing-universal-content'
           }
         }
       }
@@ -1163,12 +1169,12 @@ export function BlogList() {
     }
 
     async function triggerInvalidation() {
-      try {
-        const res = await fetch('/api/seo/invalidate', { method: 'POST' });
-        if (res.ok) {
-          await res.json();
-        }
-      } catch {}
+      if (!IS_STATIC_HOST) {
+        try {
+          const res = await fetch('/api/seo/invalidate', { method: 'POST' });
+          if (res.ok) await res.json();
+        } catch {}
+      }
       document.getElementById('cache-pill').innerText = 'CACHE CLEARED';
       document.getElementById('cache-pill').style.color = '#ef4444';
       document.getElementById('stat-latency').innerText = '0.0ms';
@@ -1177,16 +1183,18 @@ export function BlogList() {
     }
 
     async function updateMetrics() {
-      try {
-        const res = await fetch('/api/seo/metrics', { cache: 'no-cache' });
-        if (res.ok) {
-          const data = await res.json();
-          document.getElementById('stat-urls').innerText = data.metrics.totalUrlCount;
-          document.getElementById('stat-efficiency').innerText = data.cacheEfficiency;
-          document.getElementById('stat-304').innerText = data.metrics.etagHits304;
-          return;
-        }
-      } catch {}
+      if (!IS_STATIC_HOST) {
+        try {
+          const res = await fetch('/api/seo/metrics', { cache: 'no-cache' });
+          if (res.ok) {
+            const data = await res.json();
+            document.getElementById('stat-urls').innerText = data.metrics.totalUrlCount;
+            document.getElementById('stat-efficiency').innerText = data.cacheEfficiency;
+            document.getElementById('stat-304').innerText = data.metrics.etagHits304;
+            return;
+          }
+        } catch {}
+      }
       document.getElementById('stat-urls').innerText = '11';
       document.getElementById('stat-efficiency').innerText = '100%';
       document.getElementById('stat-304').innerText = '304 Ready';
@@ -1198,12 +1206,14 @@ export function BlogList() {
       const endpoint = type === 'product' ? '/api/seo/products/' + slug : '/api/seo/blog/' + slug;
 
       let entityData = null;
-      try {
-        const res = await fetch(endpoint);
-        if (res.ok) {
-          entityData = await res.json();
-        }
-      } catch {}
+      if (!IS_STATIC_HOST) {
+        try {
+          const res = await fetch(endpoint);
+          if (res.ok) {
+            entityData = await res.json();
+          }
+        } catch {}
+      }
 
       if (!entityData && STATIC_FALLBACK_ENTITIES[val]) {
         entityData = STATIC_FALLBACK_ENTITIES[val];
@@ -1216,7 +1226,7 @@ export function BlogList() {
         try {
           document.getElementById('preview-domain').innerText = new URL(meta.canonicalUrl).hostname;
         } catch {
-          document.getElementById('preview-domain').innerText = rootDomain;
+          document.getElementById('preview-domain').innerText = window.location.hostname || '${rootDomain}';
         }
         
         const imgUrl = (meta.openGraph && meta.openGraph['og:image']) || '';
