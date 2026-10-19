@@ -1,0 +1,675 @@
+import path from 'path';
+import fs from 'fs';
+import matter from 'gray-matter';
+import { remark } from 'remark';
+import remarkGfm from 'remark-gfm';
+import remarkHtml from 'remark-html';
+import crypto from 'crypto';
+
+// src/plugin.ts
+function collectionDir(contentDir, type) {
+  return path.join(contentDir, type);
+}
+async function processMarkdown(content) {
+  const result = await remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).process(content);
+  return result.toString();
+}
+async function parseMarkdownFile(filePath, slug) {
+  const fileContents = fs.readFileSync(filePath, "utf8");
+  const { data, content } = matter(fileContents);
+  const contentHtml = await processMarkdown(content);
+  const derivedSlug = slug ?? path.basename(filePath, ".md");
+  const doc = {
+    slug: derivedSlug,
+    contentHtml,
+    title: typeof data["title"] === "string" ? data["title"] : "",
+    date: typeof data["date"] === "string" ? data["date"] : "",
+    category: typeof data["category"] === "string" ? data["category"] : "",
+    excerpt: typeof data["metaDescription"] === "string" ? data["metaDescription"] : content.slice(0, 160),
+    ...data
+  };
+  return doc;
+}
+async function getAllDocs(contentDir, type) {
+  const dir = collectionDir(contentDir, type);
+  if (!fs.existsSync(dir)) return [];
+  const fileNames = fs.readdirSync(dir).filter((f) => f.endsWith(".md"));
+  const docPromises = fileNames.map(async (fileName) => {
+    const slug = fileName.replace(/\.md$/, "");
+    try {
+      return await parseMarkdownFile(path.join(dir, fileName), slug);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[markdown] Failed to parse file "${fileName}" in "${type}" collection (${msg}). Skipping.`);
+      return null;
+    }
+  });
+  const parsed = await Promise.all(docPromises);
+  const docs = parsed.filter((d) => d !== null);
+  return docs.sort((a, b) => a.date < b.date ? 1 : -1);
+}
+async function getDocBySlug(contentDir, type, slug) {
+  const fullPath = path.join(collectionDir(contentDir, type), `${slug}.md`);
+  if (!fs.existsSync(fullPath)) return null;
+  try {
+    return await parseMarkdownFile(fullPath, slug);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[markdown] Error reading "${fullPath}" (${msg}).`);
+    return null;
+  }
+}
+function formatDate(dateStr, locale = "en-KE") {
+  return new Date(dateStr).toLocaleDateString(locale, {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+}
+var DEFAULT_TYPE_MAP = {
+  blog: { listField: "posts", singleField: "postBy" },
+  news: { listField: "newsItems", singleField: "newsItemBy" },
+  projects: { listField: "projectItems", singleField: "projectItemBy" }
+};
+function sourceHash(source, rawSlug) {
+  return crypto.createHash("sha256").update(`${source}:${rawSlug}`).digest("hex").slice(0, 3);
+}
+function buildSuffixedSlug(source, rawSlug) {
+  return `${rawSlug}-${sourceHash(source, rawSlug)}`;
+}
+var POST_CORE_FIELDS = (
+  /* graphql */
+  `
+  slug
+  title
+  date
+  excerpt
+  content
+  categories { nodes { name } }
+  featuredImage { node { sourceUrl altText } }
+`
+);
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function wpQuery(options, query, variables = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (options.apiSecret) {
+    headers["X-WP-API-Secret"] = options.apiSecret;
+  }
+  const isNextJs = typeof globalThis.__NEXT_DATA__ !== "undefined" || process.env["NEXT_RUNTIME"] != null;
+  const maxRetries = options.maxRetries ?? 3;
+  const timeoutMs = options.timeoutMs ?? 8e3;
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const fetchOptions = {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ query, variables }),
+        signal: controller.signal,
+        ...isNextJs ? { next: { tags: ["wordpress"] } } : {}
+      };
+      let response;
+      try {
+        response = await fetch(options.graphqlUrl, fetchOptions);
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!response.ok) {
+        if ([502, 503, 504].includes(response.status) && attempt < maxRetries) {
+          await wait(attempt * 300);
+          continue;
+        }
+        throw new Error(
+          `[wordpress] GraphQL request failed: ${response.status} ${response.statusText}`
+        );
+      }
+      const json = await response.json();
+      if (json.errors?.length) {
+        throw new Error(
+          `[wordpress] GraphQL errors: ${json.errors.map((e) => e.message).join("; ")}`
+        );
+      }
+      return json.data;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        await wait(attempt * 300);
+      }
+    }
+  }
+  const msg = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`[wordpress] WPGraphQL unreachable after ${maxRetries} attempts (${msg})`);
+}
+function mapNode(node) {
+  const rawSlug = node.slug;
+  return {
+    slug: rawSlug,
+    rawSlug,
+    source: "wordpress",
+    title: node.title,
+    date: node.date,
+    category: node.categories.nodes[0]?.name ?? "General",
+    excerpt: (node.excerpt ?? "").replace(/<[^>]+>/g, "").replace(/\[&hellip;\]/g, "...").trim(),
+    contentHtml: node.content,
+    ...node.featuredImage?.node.sourceUrl !== void 0 ? { featuredImage: node.featuredImage.node.sourceUrl } : {}
+  };
+}
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+async function getWPAllDocs(options, type) {
+  const map = { ...DEFAULT_TYPE_MAP, ...options.typeMap }[type];
+  const query = (
+    /* graphql */
+    `
+    query GetAll${capitalize(type)} {
+      ${map.listField}(first: 100, where: { status: PUBLISH }) {
+        nodes { ${POST_CORE_FIELDS} }
+      }
+    }
+  `
+  );
+  const data = await wpQuery(options, query);
+  return (data[map.listField]?.nodes ?? []).map(mapNode);
+}
+async function getWPDocBySlug(options, type, rawSlug) {
+  const map = { ...DEFAULT_TYPE_MAP, ...options.typeMap }[type];
+  const query = (
+    /* graphql */
+    `
+    query GetSingle${capitalize(type)}($slug: String!) {
+      ${map.singleField}(slug: $slug) { ${POST_CORE_FIELDS} }
+    }
+  `
+  );
+  const data = await wpQuery(options, query, { slug: rawSlug });
+  const node = data[map.singleField];
+  return node ? mapNode(node) : null;
+}
+
+// src/content.ts
+function markdownToUnified(doc) {
+  return {
+    ...doc,
+    rawSlug: doc.slug,
+    source: "markdown",
+    excerpt: doc.excerpt ?? ""
+  };
+}
+function findCollisions(a, b) {
+  const aSet = new Set(a.map((d) => d.rawSlug));
+  const collisions = /* @__PURE__ */ new Set();
+  for (const doc of b) {
+    if (aSet.has(doc.rawSlug)) collisions.add(doc.rawSlug);
+  }
+  return collisions;
+}
+function resolveCollisions(docs, collisions) {
+  return docs.map((doc) => {
+    if (!collisions.has(doc.rawSlug)) return doc;
+    return { ...doc, slug: buildSuffixedSlug(doc.source, doc.rawSlug) };
+  });
+}
+async function getAllDocs2(opts, type) {
+  const mdPromise = getAllDocs(opts.contentDir, type).then(
+    (docs) => docs.map(markdownToUnified)
+  );
+  const wpPromise = opts.wordpress ? getWPAllDocs(opts.wordpress, type).catch((err) => {
+    if (opts.onWordPressError === "throw") {
+      throw err;
+    }
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[content] WordPress fetch failed for "${type}" (${msg}). Falling back to local Markdown.`);
+    return [];
+  }) : Promise.resolve([]);
+  const [wpDocs, mdDocs] = await Promise.all([wpPromise, mdPromise]);
+  const collisions = findCollisions(wpDocs, mdDocs);
+  return [
+    ...resolveCollisions(wpDocs, collisions),
+    ...resolveCollisions(mdDocs, collisions)
+  ].sort((a, b) => a.date < b.date ? 1 : -1);
+}
+async function getDocBySlug2(opts, type, publicSlug) {
+  const candidates = getCandidateRawSlugs(publicSlug);
+  for (const rawSlug of candidates) {
+    if (opts.wordpress) {
+      try {
+        const wpDoc = await getWPDocBySlug(opts.wordpress, type, rawSlug);
+        if (wpDoc) {
+          if (slugMatchesSource("wordpress", rawSlug, publicSlug) || rawSlug === publicSlug) {
+            return { ...wpDoc, slug: publicSlug };
+          }
+        }
+      } catch (err) {
+        if (opts.onWordPressError === "throw") {
+          throw err;
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[content] WordPress single-doc fetch failed for "${rawSlug}" (${msg}). Trying local Markdown.`);
+      }
+    }
+    const mdDoc = await getDocBySlug(opts.contentDir, type, rawSlug);
+    if (mdDoc) {
+      const unified = markdownToUnified(mdDoc);
+      if (slugMatchesSource("markdown", rawSlug, publicSlug) || rawSlug === publicSlug) {
+        return { ...unified, slug: publicSlug };
+      }
+    }
+  }
+  return null;
+}
+function getCandidateRawSlugs(publicSlug) {
+  const parts = publicSlug.split("-");
+  const candidates = [publicSlug];
+  if (parts.length > 1) {
+    const lastSegment = parts[parts.length - 1];
+    if (/^[0-9a-f]{3}$/.test(lastSegment ?? "")) {
+      candidates.push(parts.slice(0, -1).join("-"));
+    }
+  }
+  return candidates;
+}
+function slugMatchesSource(source, rawSlug, publicSlug) {
+  return buildSuffixedSlug(source, rawSlug) === publicSlug;
+}
+
+// src/plugin.ts
+var VIRTUAL_PREFIXES = ["virtual:content/", "virtual:md-content/"];
+var RESOLVED_PREFIX = "\0virtual:content/";
+var VALID_TYPES = ["blog", "news", "projects"];
+function universalContentPlugin(options = {}) {
+  let resolvedConfig;
+  const collections = options.collections ?? VALID_TYPES;
+  const enableDocModules = options.virtualDocModules ?? true;
+  function getContentDir(root) {
+    return options.contentDir ?? path.join(root, "content");
+  }
+  function getSubPath(id) {
+    for (const prefix of VIRTUAL_PREFIXES) {
+      if (id.startsWith(prefix)) {
+        return id.slice(prefix.length);
+      }
+    }
+    return null;
+  }
+  return {
+    name: "@crispice/universal-content",
+    enforce: "pre",
+    configResolved(config) {
+      resolvedConfig = config;
+    },
+    resolveId(id) {
+      const subPath = getSubPath(id);
+      if (!subPath) return;
+      const parts = subPath.split("/");
+      const type = parts[0];
+      if (!VALID_TYPES.includes(type)) {
+        return;
+      }
+      if (parts.length === 1) {
+        return `${RESOLVED_PREFIX}${subPath}`;
+      }
+      if (enableDocModules && parts.length === 2) {
+        return `${RESOLVED_PREFIX}${subPath}`;
+      }
+    },
+    async load(id) {
+      if (!id.startsWith(RESOLVED_PREFIX)) return;
+      const inner = id.slice(RESOLVED_PREFIX.length);
+      const parts = inner.split("/");
+      const type = parts[0];
+      if (!collections.includes(type)) return;
+      const contentDir = getContentDir(resolvedConfig.root);
+      const opts = { contentDir };
+      if (parts.length === 1) {
+        const docs = await getAllDocs2(opts, type);
+        return `export default ${JSON.stringify(docs, null, 2)};`;
+      }
+      if (enableDocModules && parts.length === 2) {
+        const slug = parts[1];
+        const doc = await getDocBySlug2(opts, type, slug ?? "");
+        return `export default ${JSON.stringify(doc, null, 2)};`;
+      }
+    },
+    configureServer(server) {
+      const contentDir = getContentDir(resolvedConfig.root);
+      server.watcher.add(contentDir);
+      server.watcher.on("change", (file) => {
+        if (!file.startsWith(contentDir)) return;
+        const rel = path.relative(contentDir, file);
+        const type = rel.split(path.sep)[0];
+        if (!VALID_TYPES.includes(type)) return;
+        const indexId = `${RESOLVED_PREFIX}${type}`;
+        const indexMod = server.moduleGraph.getModuleById(indexId);
+        if (indexMod) {
+          server.moduleGraph.invalidateModule(indexMod);
+          server.hot.send({ type: "full-reload" });
+        }
+        server.moduleGraph.idToModuleMap.forEach((mod, modId) => {
+          if (modId.startsWith(`${RESOLVED_PREFIX}${type}/`)) {
+            server.moduleGraph.invalidateModule(mod);
+          }
+        });
+      });
+    },
+    async buildEnd() {
+      if (resolvedConfig?.command !== "build") return;
+      const contentDir = getContentDir(resolvedConfig.root);
+      for (const type of collections) {
+        const docs = await getAllDocs2({ contentDir }, type);
+        this.emitFile({
+          type: "asset",
+          fileName: `_content/${type}.json`,
+          source: JSON.stringify(docs, null, 2)
+        });
+      }
+    }
+  };
+}
+var mdContentPlugin = universalContentPlugin;
+function escapeXml(unsafe) {
+  return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+function unescapeXml(escaped) {
+  return escaped.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+}
+function generateEtag(content) {
+  const hash = crypto.createHash("sha1").update(content, "utf8").digest("hex").slice(0, 16);
+  return `"${hash}"`;
+}
+async function getSitemapEntries(opts, options = {}) {
+  const cacheKey = options.cacheKey ?? `seo:sitemap-entries:${options.baseUrl ?? "default"}`;
+  if (options.cache) {
+    try {
+      const cached = await options.cache.get(cacheKey);
+      if (typeof cached === "string" && cached.length > 0) {
+        return JSON.parse(cached);
+      }
+    } catch {
+    }
+  }
+  const collections = options.collections ?? ["blog", "news", "projects"];
+  const base = options.baseUrl ? options.baseUrl.replace(/\/+$/, "") : "";
+  const defaultPriorities = {
+    blog: 0.8,
+    news: 0.7,
+    projects: 0.7,
+    ...options.defaultPriority
+  };
+  const defaultFreqs = {
+    blog: "weekly",
+    news: "daily",
+    projects: "monthly",
+    ...options.defaultChangefreq
+  };
+  const allEntries = [];
+  for (const type of collections) {
+    const docs = await getAllDocs2(opts, type);
+    const prefix = options.pathPrefixMap?.[type] ?? type;
+    for (const doc of docs) {
+      const loc = base ? `${base}/${prefix}/${doc.slug}` : `/${prefix}/${doc.slug}`;
+      let lastmod = void 0;
+      const rawDate = doc["lastmod"] ?? doc["updatedAt"] ?? doc["modified"] ?? doc.date;
+      if (typeof rawDate === "string" && rawDate.length >= 10) {
+        lastmod = rawDate.slice(0, 10);
+      }
+      let priority = defaultPriorities[type];
+      if (typeof doc["priority"] === "number") {
+        priority = doc["priority"];
+      }
+      let changefreq = defaultFreqs[type];
+      if (typeof doc["changefreq"] === "string") {
+        changefreq = doc["changefreq"];
+      }
+      const images = [];
+      const imgUrl = doc.featuredImage ?? (typeof doc["image"] === "string" ? doc["image"] : void 0);
+      if (imgUrl) {
+        const imgTitle = typeof doc["imageTitle"] === "string" ? doc["imageTitle"] : void 0;
+        images.push({
+          url: imgUrl,
+          ...imgTitle !== void 0 ? { title: imgTitle } : {}
+        });
+      }
+      allEntries.push({
+        loc,
+        ...lastmod !== void 0 ? { lastmod } : {},
+        ...changefreq !== void 0 ? { changefreq } : {},
+        ...priority !== void 0 ? { priority } : {},
+        ...images.length > 0 ? { images } : {},
+        type,
+        slug: doc.slug
+      });
+    }
+  }
+  if (options.cache) {
+    try {
+      const ttl = options.cacheTtl ?? 3600;
+      await options.cache.set(cacheKey, JSON.stringify(allEntries), ttl);
+    } catch {
+    }
+  }
+  return allEntries;
+}
+async function getSitemapXmlChunk(opts, options = {}) {
+  const cacheKey = options.cacheKey ?? `seo:sitemap-chunk:${options.baseUrl ?? "default"}`;
+  if (options.cache) {
+    try {
+      const cached = await options.cache.get(cacheKey);
+      if (typeof cached === "string" && cached.length > 0) {
+        return cached;
+      }
+    } catch {
+    }
+  }
+  const entries = await getSitemapEntries(opts, options);
+  const lines = [];
+  for (const entry of entries) {
+    lines.push("  <url>");
+    lines.push(`    <loc>${escapeXml(entry.loc)}</loc>`);
+    if (entry.lastmod) {
+      lines.push(`    <lastmod>${escapeXml(entry.lastmod)}</lastmod>`);
+    }
+    if (entry.changefreq) {
+      lines.push(`    <changefreq>${escapeXml(entry.changefreq)}</changefreq>`);
+    }
+    if (entry.priority !== void 0) {
+      lines.push(`    <priority>${entry.priority.toFixed(1)}</priority>`);
+    }
+    if (entry.images && entry.images.length > 0) {
+      for (const img of entry.images) {
+        lines.push("    <image:image>");
+        lines.push(`      <image:loc>${escapeXml(img.url)}</image:loc>`);
+        if (img.title) {
+          lines.push(`      <image:title>${escapeXml(img.title)}</image:title>`);
+        }
+        lines.push("    </image:image>");
+      }
+    }
+    lines.push("  </url>");
+  }
+  const chunk = lines.join("\n");
+  if (options.cache) {
+    try {
+      const ttl = options.cacheTtl ?? 3600;
+      await options.cache.set(cacheKey, chunk, ttl);
+    } catch {
+    }
+  }
+  return chunk;
+}
+function mergeSitemapUrlsets(baseXml, additionalChunkOrXml) {
+  let targetBaseXml = baseXml;
+  let chunkToInsert = additionalChunkOrXml.trim();
+  if (chunkToInsert.includes("<urlset")) {
+    const innerMatch = /<urlset\b[^>]*>([\s\S]*?)<\/urlset>/i.exec(chunkToInsert);
+    if (innerMatch && innerMatch[1]) {
+      chunkToInsert = innerMatch[1].trim();
+    }
+  }
+  if (!chunkToInsert) {
+    return baseXml;
+  }
+  if (chunkToInsert.includes("<image:") && !targetBaseXml.includes("xmlns:image=")) {
+    targetBaseXml = targetBaseXml.replace(
+      /<urlset\b/i,
+      '<urlset xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"'
+    );
+  }
+  const closingTagIndex = targetBaseXml.lastIndexOf("</urlset>");
+  if (closingTagIndex === -1) {
+    return mergeSitemaps(targetBaseXml, parseSitemapXml(additionalChunkOrXml));
+  }
+  const before = targetBaseXml.slice(0, closingTagIndex).trimEnd();
+  const after = targetBaseXml.slice(closingTagIndex);
+  return `${before}
+${chunkToInsert}
+${after}`;
+}
+function generateSitemapXml(entries) {
+  const hasImages = entries.some((e) => e.images && e.images.length > 0);
+  const xmlLines = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${hasImages ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : ""}>`
+  ];
+  for (const entry of entries) {
+    xmlLines.push("  <url>");
+    xmlLines.push(`    <loc>${escapeXml(entry.loc)}</loc>`);
+    if (entry.lastmod) {
+      xmlLines.push(`    <lastmod>${escapeXml(entry.lastmod)}</lastmod>`);
+    }
+    if (entry.changefreq) {
+      xmlLines.push(`    <changefreq>${escapeXml(entry.changefreq)}</changefreq>`);
+    }
+    if (entry.priority !== void 0) {
+      xmlLines.push(`    <priority>${entry.priority.toFixed(1)}</priority>`);
+    }
+    if (entry.images && entry.images.length > 0) {
+      for (const img of entry.images) {
+        xmlLines.push("    <image:image>");
+        xmlLines.push(`      <image:loc>${escapeXml(img.url)}</image:loc>`);
+        if (img.title) {
+          xmlLines.push(`      <image:title>${escapeXml(img.title)}</image:title>`);
+        }
+        xmlLines.push("    </image:image>");
+      }
+    }
+    xmlLines.push("  </url>");
+  }
+  xmlLines.push("</urlset>");
+  return xmlLines.join("\n");
+}
+function parseSitemapXml(xml) {
+  const entries = [];
+  const urlRegex = /<url\b[^>]*>([\s\S]*?)<\/url>/gi;
+  let match;
+  while ((match = urlRegex.exec(xml)) !== null) {
+    const block = match[1] ?? "";
+    const locMatch = /<loc\b[^>]*>([\s\S]*?)<\/loc>/i.exec(block);
+    if (!locMatch || !locMatch[1]) continue;
+    const loc = unescapeXml(locMatch[1].trim());
+    const lastmodMatch = /<lastmod\b[^>]*>([\s\S]*?)<\/lastmod>/i.exec(block);
+    const lastmod = lastmodMatch && lastmodMatch[1] ? unescapeXml(lastmodMatch[1].trim()) : void 0;
+    const changefreqMatch = /<changefreq\b[^>]*>([\s\S]*?)<\/changefreq>/i.exec(block);
+    const changefreq = changefreqMatch && changefreqMatch[1] ? unescapeXml(changefreqMatch[1].trim()) : void 0;
+    const priorityMatch = /<priority\b[^>]*>([\s\S]*?)<\/priority>/i.exec(block);
+    const priority = priorityMatch && priorityMatch[1] ? parseFloat(priorityMatch[1].trim()) : void 0;
+    const images = [];
+    const imgRegex = /<image:image\b[^>]*>([\s\S]*?)<\/image:image>/gi;
+    let imgMatch;
+    while ((imgMatch = imgRegex.exec(block)) !== null) {
+      const imgBlock = imgMatch[1] ?? "";
+      const imgLocMatch = /<image:loc\b[^>]*>([\s\S]*?)<\/image:loc>/i.exec(imgBlock);
+      if (imgLocMatch && imgLocMatch[1]) {
+        const titleMatch = /<image:title\b[^>]*>([\s\S]*?)<\/image:title>/i.exec(imgBlock);
+        images.push({
+          url: unescapeXml(imgLocMatch[1].trim()),
+          ...titleMatch && titleMatch[1] ? { title: unescapeXml(titleMatch[1].trim()) } : {}
+        });
+      }
+    }
+    entries.push({
+      loc,
+      ...lastmod !== void 0 ? { lastmod } : {},
+      ...changefreq !== void 0 ? { changefreq } : {},
+      ...priority !== void 0 && !isNaN(priority) ? { priority } : {},
+      ...images.length > 0 ? { images } : {}
+    });
+  }
+  return entries;
+}
+function mergeSitemaps(existingXmlOrEntries, newEntries) {
+  const existing = typeof existingXmlOrEntries === "string" ? parseSitemapXml(existingXmlOrEntries) : existingXmlOrEntries;
+  const map = /* @__PURE__ */ new Map();
+  for (const entry of existing) {
+    map.set(entry.loc, entry);
+  }
+  for (const entry of newEntries) {
+    const current = map.get(entry.loc);
+    map.set(entry.loc, { ...current, ...entry });
+  }
+  return generateSitemapXml(Array.from(map.values()));
+}
+function getDocJsonLd(doc, options) {
+  const base = options.baseUrl.replace(/\/+$/, "");
+  const url = `${base}/${doc.category.toLowerCase() === "news" ? "news" : "blog"}/${doc.slug}`;
+  const type = options.articleType ?? (doc.category.toLowerCase() === "news" ? "NewsArticle" : "BlogPosting");
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": type,
+    headline: doc.title,
+    mainEntityOfPage: url,
+    ...doc.excerpt ? { description: doc.excerpt } : {},
+    ...doc.date ? { datePublished: doc.date } : {},
+    ...doc.featuredImage ? { image: doc.featuredImage } : {},
+    ...doc.category ? { articleSection: doc.category } : {},
+    author: {
+      "@type": "Organization",
+      name: options.authorName ?? options.siteName ?? "MURAGEH"
+    }
+  };
+  if (options.siteName) {
+    jsonLd.publisher = {
+      "@type": "Organization",
+      name: options.siteName,
+      ...options.publisherLogo !== void 0 ? {
+        logo: {
+          "@type": "ImageObject",
+          url: options.publisherLogo
+        }
+      } : {}
+    };
+  }
+  return jsonLd;
+}
+function getDocMetaTags(doc, options) {
+  const base = options.baseUrl.replace(/\/+$/, "");
+  const canonicalUrl = `${base}/${doc.category.toLowerCase() === "news" ? "news" : "blog"}/${doc.slug}`;
+  const image = doc.featuredImage ?? options.defaultImage;
+  return {
+    title: doc.title,
+    description: doc.excerpt,
+    canonicalUrl,
+    openGraph: {
+      "og:title": doc.title,
+      "og:description": doc.excerpt,
+      "og:url": canonicalUrl,
+      "og:type": "article",
+      ...options.siteName !== void 0 ? { "og:site_name": options.siteName } : {},
+      ...image !== void 0 ? { "og:image": image } : {}
+    },
+    twitter: {
+      "twitter:card": image ? "summary_large_image" : "summary",
+      "twitter:title": doc.title,
+      "twitter:description": doc.excerpt,
+      ...image !== void 0 ? { "twitter:image": image } : {}
+    }
+  };
+}
+
+export { formatDate, generateEtag, generateSitemapXml, getAllDocs2 as getAllDocs, getAllDocs as getAllMarkdownDocs, getDocBySlug2 as getDocBySlug, getDocJsonLd, getDocMetaTags, getDocBySlug as getMarkdownDocBySlug, getSitemapEntries, getSitemapXmlChunk, mdContentPlugin, mergeSitemapUrlsets, mergeSitemaps, parseMarkdownFile, parseSitemapXml, processMarkdown, universalContentPlugin };
+//# sourceMappingURL=index.js.map
+//# sourceMappingURL=index.js.map
