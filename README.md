@@ -1,9 +1,16 @@
 # @crispice/universal-content
 
-> The universal content engine for **Next.js**, **Fastify**, and **Vite**.
+> **High-performance content layer for Vite, Fastify, and Next.js applications.**
+> Unify local Markdown frontmatter collections and Headless WordPress behind a 
+> sub-millisecond two-tier cache (L1 Memory LRU + L2 Redis) with automated XML sitemaps, 
+> HTTP 304 ETag zero-bandwidth egress, and Schema.org JSON-LD extraction.
 
-> Framework-agnostic Markdown content pipeline with two-tier caching (LRU + ioredis), optional headless WordPress/WPGraphQL merge, and first-class adapters for **Next.js**, **Fastify v5**, and **Vite**.
-> Author: **MURAGEH** ([murageh.co.ke](https://murageh.co.ke)).
+- **Dual-Source Ingestion**: Combine file-based Markdown collections with remote WordPress REST/GraphQL.
+- **Sub-0.05ms Latency**: In-memory LRU with Redis failover and HTTP 304 conditional request short-circuiting.
+- **Non-Destructive Sitemaps**: Chunked `<urlset>` injection merging database catalog routes with blog content.
+- **Zero-Config Virtual Modules**: Instant HMR with `virtual:content/<collection>` in Vite.
+
+Author: **MURAGEH** ([murageh.co.ke](https://murageh.co.ke)) | Live Playground: [playground.murageh.co.ke](https://playground.murageh.co.ke)
 
 ---
 
@@ -11,20 +18,20 @@
 
 `@crispice/universal-content` is designed to be used across diverse architectures from a single, unified codebase:
 
-1. **Next.js Applications** (e.g. author site [`murageh.co.ke`](https://murageh.co.ke)) — Server Components, App Router Route Handlers, on-demand ISR tag revalidation.
-2. **Fastify Backend APIs** (monorepo backend) — High-throughput REST API with two-tier caching (L1 LRU + L2 `ioredis`) and publish webhook receiver.
-3. **Vite Frontend SPAs / Static Sites** — Virtual module imports (`virtual:md-content/blog`), HMR, and build-time JSON asset generation.
+1. **Next.js Applications** (e.g. author site [`murageh.co.ke`](https://murageh.co.ke)): Server Components, App Router Route Handlers, on-demand ISR tag revalidation.
+2. **Fastify Backend APIs** (monorepo backend): High-throughput REST API with two-tier caching (L1 LRU + L2 `ioredis`) and publish webhook receiver.
+3. **Vite Frontend SPAs / Static Sites**: Virtual module imports (`virtual:content/blog`), HMR, and build-time JSON asset generation.
 
 ---
 
 ## Features
 
-- **Next.js App Router Adapter** (`./next`) — `getNextDocs`, `getNextDocBySlug`, `getRawDocBySlug`, and `createRevalidateHandler` for instant ISR revalidation.
-- **Fastify v5 Adapter** (`./fastify`) — REST endpoints (`GET /api/content/:type`, `GET /api/content/:type/:slug`) with two-tier caching.
-- **Two-Tier Caching** — L1 in-process LRU (sub-millisecond hot reads) + L2 `ioredis` (cross-process persistence and cluster sharing).
-- **Vite Virtual Modules** — `import docs from 'virtual:md-content/blog'` with instant dev HMR.
-- **WordPress WPGraphQL Integration** (`./wordpress`) — Merge remote WordPress posts with local Markdown with deterministic SHA-256 slug collision handling.
-- **Configurable Fallback & Error Handling** — Controlled via `onWordPressError: 'fallback' | 'throw'`.
+- **Next.js App Router Adapter** (`./next`): `getNextDocs`, `getNextDocBySlug`, `getRawDocBySlug`, and `createRevalidateHandler` for instant ISR revalidation.
+- **Fastify v5 Adapter** (`./fastify`): REST endpoints (`GET /api/content/:type`, `GET /api/content/:type/:slug`) with two-tier caching.
+- **Two-Tier Caching**: L1 in-process LRU (sub-millisecond hot reads) + L2 `ioredis` (cross-process persistence and cluster sharing).
+- **Vite Virtual Modules**: `import docs from 'virtual:content/blog'` with instant dev HMR.
+- **WordPress WPGraphQL Integration** (`./wordpress`): Merge remote WordPress posts with local Markdown with deterministic SHA-256 slug collision handling.
+- **Configurable Fallback & Error Handling**: Controlled via `onWordPressError: 'fallback' | 'throw'`.
 
 ---
 
