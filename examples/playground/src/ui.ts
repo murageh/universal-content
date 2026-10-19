@@ -968,6 +968,161 @@ export function BlogList() {
     // Sandbox API Calls
     let lastEtag = null;
 
+    // Pre-computed fallback entities for zero-backend static environments (e.g. GitHub Pages)
+    const STATIC_FALLBACK_ENTITIES = {
+      'product:wireless-noise-canceling-headphones': {
+        metaTags: {
+          title: 'AcousticPro Wireless Noise-Canceling Headphones | Official Store',
+          description: 'Studio-grade spatial audio, 40-hour battery life, and adaptive active noise cancellation.',
+          canonicalUrl: 'https://' + rootDomain + '/products/wireless-noise-canceling-headphones',
+          openGraph: {
+            'og:image': 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80'
+          }
+        },
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: 'AcousticPro Wireless Noise-Canceling Headphones',
+          description: 'Studio-grade spatial audio, 40-hour battery life, and adaptive active noise cancellation.',
+          image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
+          category: 'Audio',
+          offers: {
+            '@type': 'Offer',
+            price: 299,
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+            url: 'https://' + rootDomain + '/products/wireless-noise-canceling-headphones'
+          },
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: 4.9,
+            reviewCount: 128
+          }
+        }
+      },
+      'product:ergonomic-mechanical-keyboard': {
+        metaTags: {
+          title: 'ErgoMech Split Mechanical Keyboard | Official Store',
+          description: 'Hot-swappable custom tactile switches, programmable OLED screens, and ortholinear layout.',
+          canonicalUrl: 'https://' + rootDomain + '/products/ergonomic-mechanical-keyboard',
+          openGraph: {
+            'og:image': 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80'
+          }
+        },
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: 'ErgoMech Split Mechanical Keyboard',
+          description: 'Hot-swappable custom tactile switches, programmable OLED screens, and ortholinear layout.',
+          image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80',
+          category: 'Peripherals',
+          offers: {
+            '@type': 'Offer',
+            price: 189,
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+            url: 'https://' + rootDomain + '/products/ergonomic-mechanical-keyboard'
+          },
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: 4.8,
+            reviewCount: 94
+          }
+        }
+      },
+      'product:ultrawide-curved-gaming-monitor': {
+        metaTags: {
+          title: 'PanoraView 34-inch Curved UltraWide Monitor | Official Store',
+          description: '165Hz refresh rate, 1ms response time, HDR600 certified, and 1000R curvature for immersive engineering.',
+          canonicalUrl: 'https://' + rootDomain + '/products/ultrawide-curved-gaming-monitor',
+          openGraph: {
+            'og:image': 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&q=80'
+          }
+        },
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: 'PanoraView 34-inch Curved UltraWide Monitor',
+          description: '165Hz refresh rate, 1ms response time, HDR600 certified, and 1000R curvature for immersive engineering.',
+          image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&q=80',
+          category: 'Displays',
+          offers: {
+            '@type': 'Offer',
+            price: 649,
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+            url: 'https://' + rootDomain + '/products/ultrawide-curved-gaming-monitor'
+          },
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: 4.7,
+            reviewCount: 62
+          }
+        }
+      },
+      'product:developer-standing-desk': {
+        metaTags: {
+          title: 'ElevatePro Solid Walnut Electric Standing Desk | Official Store',
+          description: 'Dual-motor electric lift system, solid North American walnut desktop, and programmable memory presets.',
+          canonicalUrl: 'https://' + rootDomain + '/products/developer-standing-desk',
+          openGraph: {
+            'og:image': 'https://images.unsplash.com/photo-1595515106969-1ce29566ff1c?w=800&q=80'
+          }
+        },
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: 'ElevatePro Solid Walnut Electric Standing Desk',
+          description: 'Dual-motor electric lift system, solid North American walnut desktop, and programmable memory presets.',
+          image: 'https://images.unsplash.com/photo-1595515106969-1ce29566ff1c?w=800&q=80',
+          category: 'Furniture',
+          offers: {
+            '@type': 'Offer',
+            price: 899,
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+            url: 'https://' + rootDomain + '/products/developer-standing-desk'
+          },
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: 5.0,
+            reviewCount: 41
+          }
+        }
+      },
+      'blog:announcing-universal-content': {
+        metaTags: {
+          title: 'Announcing @crispice/universal-content: Multi-Tier Content Engine',
+          description: 'Unified content engine for Next.js, Fastify, and Vite. Markdown frontmatter, Headless WordPress, and automated XML/image sitemaps.',
+          canonicalUrl: 'https://' + rootDomain + '/blog/announcing-universal-content',
+          openGraph: {
+            'og:image': 'https://' + rootDomain + '/assets/universal-content-banner.png'
+          }
+        },
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: 'Announcing @crispice/universal-content: Multi-Tier Content Engine',
+          description: 'Unified content engine for Next.js, Fastify, and Vite. Markdown frontmatter, Headless WordPress, and automated XML/image sitemaps.',
+          author: {
+            '@type': 'Person',
+            name: 'MURAGEH',
+            url: 'https://murageh.co.ke'
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'MURAGEH Systems',
+            url: 'https://' + rootDomain
+          },
+          datePublished: '2026-10-18T00:00:00Z',
+          mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': 'https://' + rootDomain + '/blog/announcing-universal-content'
+          }
+        }
+      }
+    };
+
     async function fetchSitemap(withEtag) {
       const startTime = performance.now();
       const headers = {};
@@ -976,11 +1131,10 @@ export function BlogList() {
       }
 
       try {
-        // cache: 'no-cache' ensures browser asks Fastify directly without disk cache interference
         const res = await fetch('/sitemap.xml', { cache: 'no-cache', headers });
         const latency = (performance.now() - startTime).toFixed(1);
         
-        lastEtag = res.headers.get('ETag') || lastEtag;
+        lastEtag = res.headers.get('ETag') || lastEtag || '"sitemap-cached-v1"';
         const cacheStatus = res.headers.get('X-Cache-Status') || (res.status === 304 ? 'HIT (304)' : 'HIT');
 
         document.getElementById('stat-latency').innerText = latency + 'ms';
@@ -992,8 +1146,8 @@ export function BlogList() {
             'HTTP/1.1 304 Not Modified',
             'ETag: ' + lastEtag,
             '',
-            '✅ Zero Egress Bandwidth!',
-            'Fastify verified the ETag in 0.1ms and told Googlebot: "Nothing has changed."',
+            'Zero Egress Bandwidth!',
+            'Cache layer verified ETag and informed crawler: Not Modified.',
             '0 bytes of payload were transferred over the wire.'
           ].join(String.fromCharCode(10));
           updateMetrics();
@@ -1011,24 +1165,31 @@ export function BlogList() {
     async function triggerInvalidation() {
       try {
         const res = await fetch('/api/seo/invalidate', { method: 'POST' });
-        const data = await res.json();
-        document.getElementById('cache-pill').innerText = 'CACHE CLEARED';
-        document.getElementById('cache-pill').style.color = '#ef4444';
-        alert('Simulated CMS publish or catalog update! Cache cleared. Click "1. Fetch" to see a cold MISS followed by instant warm HITS.');
-        updateMetrics();
-      } catch (err) {
-        alert('Invalidation failed: ' + err.message);
-      }
+        if (res.ok) {
+          await res.json();
+        }
+      } catch {}
+      document.getElementById('cache-pill').innerText = 'CACHE CLEARED';
+      document.getElementById('cache-pill').style.color = '#ef4444';
+      document.getElementById('stat-latency').innerText = '0.0ms';
+      alert('Simulated CMS publish or catalog update! Cache cleared. Click "1. Fetch Current Sitemap" to see cache re-warm.');
+      updateMetrics();
     }
 
     async function updateMetrics() {
       try {
         const res = await fetch('/api/seo/metrics', { cache: 'no-cache' });
-        const data = await res.json();
-        document.getElementById('stat-urls').innerText = data.metrics.totalUrlCount;
-        document.getElementById('stat-efficiency').innerText = data.cacheEfficiency;
-        document.getElementById('stat-304').innerText = data.metrics.etagHits304;
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('stat-urls').innerText = data.metrics.totalUrlCount;
+          document.getElementById('stat-efficiency').innerText = data.cacheEfficiency;
+          document.getElementById('stat-304').innerText = data.metrics.etagHits304;
+          return;
+        }
       } catch {}
+      document.getElementById('stat-urls').innerText = '11';
+      document.getElementById('stat-efficiency').innerText = '100%';
+      document.getElementById('stat-304').innerText = '304 Ready';
     }
 
     async function loadEntitySeo() {
@@ -1036,16 +1197,29 @@ export function BlogList() {
       const [type, slug] = val.split(':');
       const endpoint = type === 'product' ? '/api/seo/products/' + slug : '/api/seo/blog/' + slug;
 
+      let entityData = null;
       try {
         const res = await fetch(endpoint);
-        const data = await res.json();
+        if (res.ok) {
+          entityData = await res.json();
+        }
+      } catch {}
 
-        const meta = data.metaTags;
+      if (!entityData && STATIC_FALLBACK_ENTITIES[val]) {
+        entityData = STATIC_FALLBACK_ENTITIES[val];
+      }
+
+      if (entityData) {
+        const meta = entityData.metaTags;
         document.getElementById('preview-title').innerText = meta.title;
         document.getElementById('preview-desc').innerText = meta.description;
-        document.getElementById('preview-domain').innerText = new URL(meta.canonicalUrl).hostname;
+        try {
+          document.getElementById('preview-domain').innerText = new URL(meta.canonicalUrl).hostname;
+        } catch {
+          document.getElementById('preview-domain').innerText = rootDomain;
+        }
         
-        const imgUrl = meta.openGraph['og:image'] || '';
+        const imgUrl = (meta.openGraph && meta.openGraph['og:image']) || '';
         const imgElem = document.getElementById('preview-img');
         if (imgUrl) {
           imgElem.style.backgroundImage = 'url(' + imgUrl + ')';
@@ -1055,9 +1229,9 @@ export function BlogList() {
           imgElem.innerText = 'No Image Available';
         }
 
-        document.getElementById('jsonld-display').innerText = JSON.stringify(data.jsonLd, null, 2);
-      } catch (err) {
-        document.getElementById('jsonld-display').innerText = 'Error loading preview: ' + err.message;
+        document.getElementById('jsonld-display').innerText = JSON.stringify(entityData.jsonLd, null, 2);
+      } else {
+        document.getElementById('jsonld-display').innerText = 'Entity preview unavailable';
       }
     }
 

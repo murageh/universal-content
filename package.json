@@ -42,7 +42,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsx scripts/build-docs.ts",
+    "build:docs": "tsx scripts/build-docs.ts",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

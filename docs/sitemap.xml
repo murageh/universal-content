@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://playground.murageh.co.ke/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/features</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/pricing</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/catalog</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/docs</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/products/wireless-noise-canceling-headphones</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&amp;q=80</image:loc>
+      <image:title>AcousticPro Wireless Noise-Canceling Headphones</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/products/ergonomic-mechanical-keyboard</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&amp;q=80</image:loc>
+      <image:title>ErgoMech Split Mechanical Keyboard</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/products/ultrawide-curved-gaming-monitor</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&amp;q=80</image:loc>
+      <image:title>PanoraView 34-inch Curved UltraWide Monitor</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/products/developer-standing-desk</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1595515106969-1ce29566ff1c?w=800&amp;q=80</image:loc>
+      <image:title>ElevatePro Solid Walnut Electric Standing Desk</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://playground.murageh.co.ke/blog/announcing-universal-content</loc>
+    <lastmod>2026-10-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://playground.murageh.co.ke/assets/universal-content-banner.png</image:loc>
+      <image:title>Announcing @crispice/universal-content: Multi-Tier Content Engine</image:title>
+    </image:image>
+  </url>
+</urlset>
