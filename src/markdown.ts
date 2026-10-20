@@ -92,6 +92,8 @@ export async function parseMarkdownFile(
     | Array<Record<string, unknown>>
     | undefined;
 
+  const resolvedJsonLd = customJsonLd ?? frontmatterJsonLd;
+
   const doc: MarkdownDoc = {
     slug: derivedSlug,
     contentHtml,
@@ -99,7 +101,7 @@ export async function parseMarkdownFile(
     date:     typeof data['date'] === 'string' ? data['date'] : '',
     category: typeof data['category'] === 'string' ? data['category'] : '',
     excerpt:  typeof data['metaDescription'] === 'string' ? data['metaDescription'] : cleanContent.slice(0, 160),
-    ...(customJsonLd || frontmatterJsonLd ? { customJsonLd: customJsonLd ?? frontmatterJsonLd } : {}),
+    ...(resolvedJsonLd ? { customJsonLd: resolvedJsonLd } : {}),
     ...data,
   };
 

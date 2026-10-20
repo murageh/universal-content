@@ -25,18 +25,18 @@ export interface MarkdownDoc {
   title: string;
   date: string;
   category: string;
-  author?: string;
-  excerpt?: string;
+  author?: string | undefined;
+  excerpt?: string | undefined;
   contentHtml: string;
-  featuredImage?: string;
-  image?: string;
-  readingTime?: string;
-  systemSize?: string;
-  location?: string;
-  featured?: boolean;
-  eventRef?: string;
+  featuredImage?: string | undefined;
+  image?: string | undefined;
+  readingTime?: string | undefined;
+  systemSize?: string | undefined;
+  location?: string | undefined;
+  featured?: boolean | undefined;
+  eventRef?: string | undefined;
   /** Schema.org structured data extracted from trailing markdown blocks or frontmatter. */
-  customJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+  customJsonLd?: Record<string, unknown> | Array<Record<string, unknown>> | undefined;
   [key: string]: unknown;
 }
 

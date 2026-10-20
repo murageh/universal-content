@@ -1,4 +1,4 @@
-import { C as ContentType, a as MarkdownDoc } from './types-DDx-Ufje.cjs';
+import { C as ContentType, a as MarkdownDoc } from './types-BkjruK9s.js';
 
 /**
  * src/markdown.ts

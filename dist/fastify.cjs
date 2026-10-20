@@ -55,6 +55,7 @@ async function parseMarkdownFile(filePath, slug) {
   const contentHtml = await processMarkdown(cleanContent);
   const derivedSlug = slug ?? path__default.default.basename(filePath, ".md");
   const frontmatterJsonLd = data["customJsonLd"] ?? data["jsonLd"];
+  const resolvedJsonLd = customJsonLd ?? frontmatterJsonLd;
   const doc = {
     slug: derivedSlug,
     contentHtml,
@@ -62,7 +63,7 @@ async function parseMarkdownFile(filePath, slug) {
     date: typeof data["date"] === "string" ? data["date"] : "",
     category: typeof data["category"] === "string" ? data["category"] : "",
     excerpt: typeof data["metaDescription"] === "string" ? data["metaDescription"] : cleanContent.slice(0, 160),
-    ...customJsonLd || frontmatterJsonLd ? { customJsonLd: customJsonLd ?? frontmatterJsonLd } : {},
+    ...resolvedJsonLd ? { customJsonLd: resolvedJsonLd } : {},
     ...data
   };
   return doc;

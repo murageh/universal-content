@@ -1,4 +1,4 @@
-import { W as WordPressOptions, C as ContentType, U as UnifiedDoc } from './types-DDx-Ufje.cjs';
+import { W as WordPressOptions, C as ContentType, U as UnifiedDoc } from './types-BkjruK9s.js';
 
 /**
  * src/content.ts
