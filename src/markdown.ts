@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/markdown.ts
  *
  * Core Markdown processing engine.
@@ -41,6 +41,37 @@ export async function processMarkdown(content: string): Promise<string> {
 }
 
 /**
+ * Extracts trailing Schema.org JSON-LD code blocks from markdown content.
+ * Strips the block from the content so it does not render into reader HTML,
+ * and parses it into a structured object or array.
+ */
+function extractSchemaJsonLd(rawContent: string): {
+  cleanContent: string;
+  customJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+} {
+  const trimmed = rawContent.trimEnd();
+  const trailingJsonBlockRegex = /```(?:json|ld\+json)?\s*\n([\s\S]*?)\n```$/;
+  const match = trailingJsonBlockRegex.exec(trimmed);
+
+  if (match && match[1]) {
+    const candidate = match[1].trim();
+    if (candidate.includes('schema.org')) {
+      try {
+        const parsed = JSON.parse(candidate) as Record<string, unknown> | Array<Record<string, unknown>>;
+        if (typeof parsed === 'object' && parsed !== null) {
+          const cleanContent = trimmed.slice(0, match.index).trimEnd();
+          return { cleanContent, customJsonLd: parsed };
+        }
+      } catch {
+        // If not valid JSON, leave content untouched
+      }
+    }
+  }
+
+  return { cleanContent: rawContent };
+}
+
+/**
  * Parses a single Markdown file into a MarkdownDoc.
  * @param filePath - absolute path to the .md file.
  * @param slug     - derived from the filename when not provided.
@@ -52,8 +83,14 @@ export async function parseMarkdownFile(
   const fileContents = fs.readFileSync(filePath, 'utf8');
   const { data, content } = matter(fileContents);
 
-  const contentHtml = await processMarkdown(content);
+  const { cleanContent, customJsonLd } = extractSchemaJsonLd(content);
+  const contentHtml = await processMarkdown(cleanContent);
   const derivedSlug = slug ?? path.basename(filePath, '.md');
+
+  const frontmatterJsonLd = (data['customJsonLd'] ?? data['jsonLd']) as
+    | Record<string, unknown>
+    | Array<Record<string, unknown>>
+    | undefined;
 
   const doc: MarkdownDoc = {
     slug: derivedSlug,
@@ -61,7 +98,8 @@ export async function parseMarkdownFile(
     title:    typeof data['title'] === 'string' ? data['title'] : '',
     date:     typeof data['date'] === 'string' ? data['date'] : '',
     category: typeof data['category'] === 'string' ? data['category'] : '',
-    excerpt:  typeof data['metaDescription'] === 'string' ? data['metaDescription'] : content.slice(0, 160),
+    excerpt:  typeof data['metaDescription'] === 'string' ? data['metaDescription'] : cleanContent.slice(0, 160),
+    ...(customJsonLd || frontmatterJsonLd ? { customJsonLd: customJsonLd ?? frontmatterJsonLd } : {}),
     ...data,
   };
 

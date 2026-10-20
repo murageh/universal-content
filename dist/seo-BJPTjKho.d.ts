@@ -1,4 +1,4 @@
-import { W as WordPressOptions, C as ContentType, U as UnifiedDoc } from './types-CFpEjJJH.js';
+import { W as WordPressOptions, C as ContentType, U as UnifiedDoc } from './types-DDx-Ufje.js';
 
 /**
  * src/content.ts
@@ -151,6 +151,19 @@ interface JsonLdArticle {
     };
     articleSection?: string;
 }
+interface JsonLdGraph {
+    '@context': 'https://schema.org';
+    '@graph': Array<Record<string, unknown>>;
+}
+interface GetDocJsonLdOptions {
+    baseUrl: string;
+    siteName?: string;
+    publisherLogo?: string;
+    authorName?: string;
+    articleType?: 'Article' | 'BlogPosting' | 'NewsArticle';
+    /** Additional Schema.org itemsets (e.g. FAQPage, ItemList, LocalBusiness) to merge into @graph. */
+    additionalJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
 interface DocMetaTags {
     title: string;
     description: string;
@@ -204,15 +217,16 @@ declare function parseSitemapXml(xml: string): SitemapEntry[];
  */
 declare function mergeSitemaps(existingXmlOrEntries: string | SitemapEntry[], newEntries: SitemapEntry[]): string;
 /**
- * Generates Schema.org JSON-LD Article or BlogPosting structured data.
+ * Merges multiple Schema.org JSON-LD objects or arrays into a clean, deduplicated @graph structure.
+ * Strips duplicate '@context' declarations from nested child nodes inside the graph.
  */
-declare function getDocJsonLd(doc: UnifiedDoc, options: {
-    baseUrl: string;
-    siteName?: string;
-    publisherLogo?: string;
-    authorName?: string;
-    articleType?: 'Article' | 'BlogPosting' | 'NewsArticle';
-}): JsonLdArticle;
+declare function mergeJsonLd(base: Record<string, unknown> | Array<Record<string, unknown>>, additional: Record<string, unknown> | Array<Record<string, unknown>>): JsonLdGraph;
+/**
+ * Generates Schema.org JSON-LD Article or BlogPosting structured data.
+ * When doc.customJsonLd or options.additionalJsonLd is present, merges all schemas
+ * into a Schema.org @graph container.
+ */
+declare function getDocJsonLd(doc: UnifiedDoc, options: GetDocJsonLdOptions): JsonLdArticle | JsonLdGraph;
 /**
  * Generates complete OpenGraph and Twitter meta tags.
  */
@@ -222,5 +236,5 @@ declare function getDocMetaTags(doc: UnifiedDoc, options: {
     defaultImage?: string;
 }): DocMetaTags;
 
-export { generateSitemapXml as a, getAllDocs as b, getDocBySlug as c, getDocJsonLd as d, getDocMetaTags as e, getSitemapEntries as f, generateEtag as g, getSitemapXmlChunk as h, mergeSitemaps as i, mergeSitemapUrlsets as m, parseSitemapXml as p };
-export type { ContentLayerOptions as C, DocMetaTags as D, GetSitemapOptions as G, JsonLdArticle as J, SitemapEntry as S, ChangeFrequency as j, SimpleCacheInterface as k, SitemapImage as l };
+export { generateSitemapXml as a, getAllDocs as b, getDocBySlug as c, getDocJsonLd as d, getDocMetaTags as e, getSitemapEntries as f, generateEtag as g, getSitemapXmlChunk as h, mergeSitemaps as i, mergeSitemapUrlsets as m, parseSitemapXml as p, mergeJsonLd as q };
+export type { ContentLayerOptions as C, DocMetaTags as D, GetSitemapOptions as G, JsonLdArticle as J, SitemapEntry as S, ChangeFrequency as j, GetDocJsonLdOptions as k, JsonLdGraph as l, SimpleCacheInterface as n, SitemapImage as o };

@@ -131,6 +131,21 @@ export interface JsonLdArticle {
   articleSection?: string;
 }
 
+export interface JsonLdGraph {
+  '@context': 'https://schema.org';
+  '@graph': Array<Record<string, unknown>>;
+}
+
+export interface GetDocJsonLdOptions {
+  baseUrl: string;
+  siteName?: string;
+  publisherLogo?: string;
+  authorName?: string;
+  articleType?: 'Article' | 'BlogPosting' | 'NewsArticle';
+  /** Additional Schema.org itemsets (e.g. FAQPage, ItemList, LocalBusiness) to merge into @graph. */
+  additionalJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
 export interface DocMetaTags {
   title: string;
   description: string;
@@ -500,18 +515,59 @@ export function mergeSitemaps(
 }
 
 /**
+ * Merges multiple Schema.org JSON-LD objects or arrays into a clean, deduplicated @graph structure.
+ * Strips duplicate '@context' declarations from nested child nodes inside the graph.
+ */
+export function mergeJsonLd(
+  base: Record<string, unknown> | Array<Record<string, unknown>>,
+  additional: Record<string, unknown> | Array<Record<string, unknown>>,
+): JsonLdGraph {
+  const items: Array<Record<string, unknown>> = [];
+
+  function addItem(item: Record<string, unknown>) {
+    if ('@graph' in item && Array.isArray(item['@graph'])) {
+      for (const subItem of item['@graph']) {
+        if (typeof subItem === 'object' && subItem !== null) {
+          addItem(subItem as Record<string, unknown>);
+        }
+      }
+      return;
+    }
+
+    // Strip child @context when placed inside a @graph container
+    const { '@context': _ctx, ...rest } = item;
+    items.push(rest);
+  }
+
+  const baseItems = Array.isArray(base) ? base : [base];
+  for (const b of baseItems) {
+    if (typeof b === 'object' && b !== null) {
+      addItem(b);
+    }
+  }
+
+  const additionalItems = Array.isArray(additional) ? additional : [additional];
+  for (const a of additionalItems) {
+    if (typeof a === 'object' && a !== null) {
+      addItem(a);
+    }
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': items,
+  };
+}
+
+/**
  * Generates Schema.org JSON-LD Article or BlogPosting structured data.
+ * When doc.customJsonLd or options.additionalJsonLd is present, merges all schemas
+ * into a Schema.org @graph container.
  */
 export function getDocJsonLd(
   doc: UnifiedDoc,
-  options: {
-    baseUrl: string;
-    siteName?: string;
-    publisherLogo?: string;
-    authorName?: string;
-    articleType?: 'Article' | 'BlogPosting' | 'NewsArticle';
-  },
-): JsonLdArticle {
+  options: GetDocJsonLdOptions,
+): JsonLdArticle | JsonLdGraph {
   const base = options.baseUrl.replace(/\/+$/, '');
   const url = `${base}/${doc.category.toLowerCase() === 'news' ? 'news' : 'blog'}/${doc.slug}`;
   const type = options.articleType ?? (doc.category.toLowerCase() === 'news' ? 'NewsArticle' : 'BlogPosting');
@@ -544,6 +600,12 @@ export function getDocJsonLd(
           }
         : {}),
     };
+  }
+
+  const additional = options.additionalJsonLd ?? (doc.customJsonLd as Record<string, unknown> | Array<Record<string, unknown>> | undefined);
+
+  if (additional) {
+    return mergeJsonLd(jsonLd as unknown as Record<string, unknown>, additional);
   }
 
   return jsonLd;

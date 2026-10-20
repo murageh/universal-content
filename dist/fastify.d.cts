@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { G as GetSitemapOptions, S as SitemapEntry, C as ContentLayerOptions } from './seo-BN8zTVsB.cjs';
-export { g as generateEtag, a as generateSitemapXml, b as getAllDocs, c as getDocBySlug, d as getDocJsonLd, e as getDocMetaTags, f as getSitemapEntries, h as getSitemapXmlChunk, m as mergeSitemapUrlsets, i as mergeSitemaps, p as parseSitemapXml } from './seo-BN8zTVsB.cjs';
+import { G as GetSitemapOptions, S as SitemapEntry, C as ContentLayerOptions } from './seo-C0w-c4pj.cjs';
+export { g as generateEtag, a as generateSitemapXml, b as getAllDocs, c as getDocBySlug, d as getDocJsonLd, e as getDocMetaTags, f as getSitemapEntries, h as getSitemapXmlChunk, m as mergeSitemapUrlsets, i as mergeSitemaps, p as parseSitemapXml } from './seo-C0w-c4pj.cjs';
 import { ContentType, UnifiedDoc, RedisClientOrOptions } from './index.cjs';
-export { f as formatDate } from './markdown-B1xR13gp.cjs';
+export { f as formatDate } from './markdown-DJoBib0n.cjs';
 import 'ioredis';
 
 /**

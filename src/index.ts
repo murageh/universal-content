@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/index.ts
  *
  * Main entry point for @crispice/universal-content.
@@ -31,6 +31,7 @@ export {
   generateEtag,
   getDocJsonLd,
   getDocMetaTags,
+  mergeJsonLd,
 } from './seo.js';
 
 // Types
@@ -51,5 +52,7 @@ export type {
   GetSitemapOptions,
   SimpleCacheInterface,
   JsonLdArticle,
+  JsonLdGraph,
+  GetDocJsonLdOptions,
   DocMetaTags,
 } from './seo.js';

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/__tests__/markdown.test.ts
  *
  * Unit tests for the core Markdown processing engine.
@@ -61,6 +61,90 @@ describe('processMarkdown', () => {
     const html = await processMarkdown(md);
     expect(html).toContain('<table>');
     expect(html).toContain('<td>1</td>');
+  });
+});
+
+describe('customJsonLd extraction', () => {
+  it('extracts trailing Schema.org JSON-LD from markdown and strips it from contentHtml', async () => {
+    const customDir = join(tmpdir(), 'vite-plugin-md-custom-jsonld');
+    const customBlogDir = join(customDir, 'blog');
+    mkdirSync(customBlogDir, { recursive: true });
+
+    const mdWithJsonLd = `---
+title: "FAQ Post"
+date: "2026-10-18"
+category: "Guides"
+---
+
+# FAQ Post
+
+Here is the guide text.
+
+\`\`\`json
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How much is a cut?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "KES 500"
+      }
+    }
+  ]
+}
+\`\`\`
+`;
+    writeFileSync(join(customBlogDir, 'faq-post.md'), mdWithJsonLd, 'utf8');
+
+    try {
+      const doc = await getDocBySlug(customDir, 'blog', 'faq-post');
+      expect(doc).not.toBeNull();
+      expect(doc?.customJsonLd).toBeDefined();
+      const faq = doc?.customJsonLd as Record<string, unknown>;
+      expect(faq['@type']).toBe('FAQPage');
+      expect(doc?.contentHtml).toContain('<h1>FAQ Post</h1>');
+      expect(doc?.contentHtml).toContain('<p>Here is the guide text.</p>');
+      // Ensure the code block is stripped from contentHtml
+      expect(doc?.contentHtml).not.toContain('<code class="language-json">');
+      expect(doc?.contentHtml).not.toContain('FAQPage');
+    } finally {
+      rmSync(customDir, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves non-Schema.org code blocks in contentHtml', async () => {
+    const customDir = join(tmpdir(), 'vite-plugin-md-code-block');
+    const customBlogDir = join(customDir, 'blog');
+    mkdirSync(customBlogDir, { recursive: true });
+
+    const mdWithCode = `---
+title: "Dev Post"
+date: "2026-10-18"
+category: "Dev"
+---
+
+# Code Sample
+
+\`\`\`json
+{
+  "api": "v1",
+  "port": 3000
+}
+\`\`\`
+`;
+    writeFileSync(join(customBlogDir, 'dev-post.md'), mdWithCode, 'utf8');
+
+    try {
+      const doc = await getDocBySlug(customDir, 'blog', 'dev-post');
+      expect(doc).not.toBeNull();
+      expect(doc?.customJsonLd).toBeUndefined();
+      expect(doc?.contentHtml).toContain('3000');
+    } finally {
+      rmSync(customDir, { recursive: true, force: true });
+    }
   });
 });
 

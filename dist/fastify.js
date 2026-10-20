@@ -15,18 +15,40 @@ async function processMarkdown(content) {
   const result = await remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).process(content);
   return result.toString();
 }
+function extractSchemaJsonLd(rawContent) {
+  const trimmed = rawContent.trimEnd();
+  const trailingJsonBlockRegex = /```(?:json|ld\+json)?\s*\n([\s\S]*?)\n```$/;
+  const match = trailingJsonBlockRegex.exec(trimmed);
+  if (match && match[1]) {
+    const candidate = match[1].trim();
+    if (candidate.includes("schema.org")) {
+      try {
+        const parsed = JSON.parse(candidate);
+        if (typeof parsed === "object" && parsed !== null) {
+          const cleanContent = trimmed.slice(0, match.index).trimEnd();
+          return { cleanContent, customJsonLd: parsed };
+        }
+      } catch {
+      }
+    }
+  }
+  return { cleanContent: rawContent };
+}
 async function parseMarkdownFile(filePath, slug) {
   const fileContents = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(fileContents);
-  const contentHtml = await processMarkdown(content);
+  const { cleanContent, customJsonLd } = extractSchemaJsonLd(content);
+  const contentHtml = await processMarkdown(cleanContent);
   const derivedSlug = slug ?? path.basename(filePath, ".md");
+  const frontmatterJsonLd = data["customJsonLd"] ?? data["jsonLd"];
   const doc = {
     slug: derivedSlug,
     contentHtml,
     title: typeof data["title"] === "string" ? data["title"] : "",
     date: typeof data["date"] === "string" ? data["date"] : "",
     category: typeof data["category"] === "string" ? data["category"] : "",
-    excerpt: typeof data["metaDescription"] === "string" ? data["metaDescription"] : content.slice(0, 160),
+    excerpt: typeof data["metaDescription"] === "string" ? data["metaDescription"] : cleanContent.slice(0, 160),
+    ...customJsonLd || frontmatterJsonLd ? { customJsonLd: customJsonLd ?? frontmatterJsonLd } : {},
     ...data
   };
   return doc;
@@ -519,6 +541,37 @@ function mergeSitemaps(existingXmlOrEntries, newEntries) {
   }
   return generateSitemapXml(Array.from(map.values()));
 }
+function mergeJsonLd(base, additional) {
+  const items = [];
+  function addItem(item) {
+    if ("@graph" in item && Array.isArray(item["@graph"])) {
+      for (const subItem of item["@graph"]) {
+        if (typeof subItem === "object" && subItem !== null) {
+          addItem(subItem);
+        }
+      }
+      return;
+    }
+    const { "@context": _ctx, ...rest } = item;
+    items.push(rest);
+  }
+  const baseItems = Array.isArray(base) ? base : [base];
+  for (const b of baseItems) {
+    if (typeof b === "object" && b !== null) {
+      addItem(b);
+    }
+  }
+  const additionalItems = Array.isArray(additional) ? additional : [additional];
+  for (const a of additionalItems) {
+    if (typeof a === "object" && a !== null) {
+      addItem(a);
+    }
+  }
+  return {
+    "@context": "https://schema.org",
+    "@graph": items
+  };
+}
 function getDocJsonLd(doc, options) {
   const base = options.baseUrl.replace(/\/+$/, "");
   const url = `${base}/${doc.category.toLowerCase() === "news" ? "news" : "blog"}/${doc.slug}`;
@@ -548,6 +601,10 @@ function getDocJsonLd(doc, options) {
         }
       } : {}
     };
+  }
+  const additional = options.additionalJsonLd ?? doc.customJsonLd;
+  if (additional) {
+    return mergeJsonLd(jsonLd, additional);
   }
   return jsonLd;
 }

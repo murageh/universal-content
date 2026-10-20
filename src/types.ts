@@ -35,6 +35,8 @@ export interface MarkdownDoc {
   location?: string;
   featured?: boolean;
   eventRef?: string;
+  /** Schema.org structured data extracted from trailing markdown blocks or frontmatter. */
+  customJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
   [key: string]: unknown;
 }
 

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +13,7 @@ import {
   generateEtag,
   getDocJsonLd,
   getDocMetaTags,
+  mergeJsonLd,
   type SitemapEntry,
 } from '../seo.js';
 import { contentPlugin } from '../fastify.js';
@@ -299,6 +300,115 @@ metaDescription: "Commercial project showcase."
       expect(meta.openGraph['og:title']).toBe('Solar Savings in Kenya');
       expect(meta.openGraph['og:image']).toBe('https://murageh.co.ke/images/solar.jpg');
       expect(meta.twitter['twitter:card']).toBe('summary_large_image');
+    });
+
+    it('merges customJsonLd from doc into Schema.org @graph container', () => {
+      const faqSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: [
+          {
+            '@type': 'Question',
+            name: 'How do I book?',
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: 'Book via WhatsApp or M-Pesa.',
+            },
+          },
+        ],
+      };
+
+      const result = getDocJsonLd(
+        {
+          slug: 'solar-savings',
+          rawSlug: 'solar-savings',
+          source: 'markdown',
+          title: 'Solar Savings in Kenya',
+          date: '2026-10-18',
+          category: 'Solar',
+          excerpt: 'Learn how solar saves money.',
+          contentHtml: '<p>Content</p>',
+          featuredImage: 'https://murageh.co.ke/images/solar.jpg',
+          customJsonLd: faqSchema,
+        },
+        {
+          baseUrl: 'https://murageh.co.ke',
+          siteName: 'MURAGEH Energy',
+        },
+      );
+
+      expect(result['@context']).toBe('https://schema.org');
+      expect('@graph' in result).toBe(true);
+      const graph = (result as { '@graph': Array<Record<string, unknown>> })['@graph'];
+      expect(graph).toHaveLength(2);
+      expect(graph[0]?.['@type']).toBe('BlogPosting');
+      expect(graph[1]?.['@type']).toBe('FAQPage');
+      expect(graph[1]?.['@context']).toBeUndefined(); // Deduplicated context inside graph node
+    });
+
+    it('merges options.additionalJsonLd itemsets into Schema.org @graph container', () => {
+      const itemListSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Shop One',
+          },
+        ],
+      };
+
+      const result = getDocJsonLd(
+        {
+          slug: 'solar-savings',
+          rawSlug: 'solar-savings',
+          source: 'markdown',
+          title: 'Solar Savings in Kenya',
+          date: '2026-10-18',
+          category: 'Solar',
+          excerpt: 'Learn how solar saves money.',
+          contentHtml: '<p>Content</p>',
+        },
+        {
+          baseUrl: 'https://murageh.co.ke',
+          siteName: 'MURAGEH Energy',
+          additionalJsonLd: itemListSchema,
+        },
+      );
+
+      expect(result['@context']).toBe('https://schema.org');
+      expect('@graph' in result).toBe(true);
+      const graph = (result as { '@graph': Array<Record<string, unknown>> })['@graph'];
+      expect(graph).toHaveLength(2);
+      expect(graph[0]?.['@type']).toBe('BlogPosting');
+      expect(graph[1]?.['@type']).toBe('ItemList');
+    });
+
+    it('merges arbitrary JSON-LD structures via mergeJsonLd utility', () => {
+      const base = {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'Styled By Us',
+      };
+      const extra = [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: 'Styled By Us Kenya',
+        },
+        {
+          '@type': 'LocalBusiness',
+          name: 'Splittonne Barbershop',
+        },
+      ];
+
+      const merged = mergeJsonLd(base, extra);
+      expect(merged['@context']).toBe('https://schema.org');
+      expect('@graph' in merged).toBe(true);
+      const graph = (merged as { '@graph': Array<Record<string, unknown>> })['@graph'];
+      expect(graph).toHaveLength(3);
+      expect(graph.map((item) => item['@type'])).toEqual(['WebSite', 'Organization', 'LocalBusiness']);
     });
   });
 });

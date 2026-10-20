@@ -1,8 +1,8 @@
 import { Plugin } from 'vite';
-import { M as MdContentPluginOptions } from './types-CFpEjJJH.cjs';
-export { C as ContentType, a as MarkdownDoc, R as RedisClientOrOptions, U as UnifiedDoc, b as UniversalContentPluginOptions, W as WordPressOptions } from './types-CFpEjJJH.cjs';
-export { j as ChangeFrequency, C as ContentLayerOptions, D as DocMetaTags, G as GetSitemapOptions, J as JsonLdArticle, k as SimpleCacheInterface, S as SitemapEntry, l as SitemapImage, g as generateEtag, a as generateSitemapXml, b as getAllDocs, c as getDocBySlug, d as getDocJsonLd, e as getDocMetaTags, f as getSitemapEntries, h as getSitemapXmlChunk, m as mergeSitemapUrlsets, i as mergeSitemaps, p as parseSitemapXml } from './seo-BN8zTVsB.cjs';
-export { f as formatDate, g as getAllMarkdownDocs, a as getMarkdownDocBySlug, p as parseMarkdownFile, b as processMarkdown } from './markdown-B1xR13gp.cjs';
+import { M as MdContentPluginOptions } from './types-DDx-Ufje.cjs';
+export { C as ContentType, a as MarkdownDoc, R as RedisClientOrOptions, U as UnifiedDoc, b as UniversalContentPluginOptions, W as WordPressOptions } from './types-DDx-Ufje.cjs';
+export { j as ChangeFrequency, C as ContentLayerOptions, D as DocMetaTags, k as GetDocJsonLdOptions, G as GetSitemapOptions, J as JsonLdArticle, l as JsonLdGraph, n as SimpleCacheInterface, S as SitemapEntry, o as SitemapImage, g as generateEtag, a as generateSitemapXml, b as getAllDocs, c as getDocBySlug, d as getDocJsonLd, e as getDocMetaTags, f as getSitemapEntries, h as getSitemapXmlChunk, q as mergeJsonLd, m as mergeSitemapUrlsets, i as mergeSitemaps, p as parseSitemapXml } from './seo-C0w-c4pj.cjs';
+export { f as formatDate, g as getAllMarkdownDocs, a as getMarkdownDocBySlug, p as parseMarkdownFile, b as processMarkdown } from './markdown-DJoBib0n.cjs';
 import 'ioredis';
 
 /**
