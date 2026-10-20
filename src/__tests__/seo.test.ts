@@ -57,6 +57,20 @@ metaDescription: "Commercial project showcase."
 500kW grid-tied system.`,
       'utf8',
     );
+
+    fs.writeFileSync(
+      path.join(tmpDir, 'blog', 'barbershop-guide.md'),
+      `---
+title: "Best Barbershops in Nairobi"
+date: "2026-10-19"
+category: "Barbershops"
+featuredImage: "/images/blog/kenyan-executive-barbershop.jpg"
+imageTitle: "Executive Barber Fade"
+---
+
+# Best Barbershops in Nairobi`,
+      'utf8',
+    );
   });
 
   afterEach(() => {
@@ -70,7 +84,7 @@ metaDescription: "Commercial project showcase."
         { baseUrl: 'https://murageh.co.ke' },
       );
 
-      expect(entries.length).toBe(2);
+      expect(entries.length).toBe(3);
 
       const blogEntry = entries.find((e) => e.slug === 'solar-savings');
       expect(blogEntry).toBeDefined();
@@ -80,6 +94,11 @@ metaDescription: "Commercial project showcase."
       expect(blogEntry?.priority).toBe(0.8);
       expect(blogEntry?.images?.[0]?.url).toBe('https://murageh.co.ke/images/solar.jpg');
 
+      const barbershopEntry = entries.find((e) => e.slug === 'barbershop-guide');
+      expect(barbershopEntry).toBeDefined();
+      expect(barbershopEntry?.images?.[0]?.url).toBe('https://murageh.co.ke/images/blog/kenyan-executive-barbershop.jpg');
+      expect(barbershopEntry?.images?.[0]?.title).toBe('Executive Barber Fade');
+
       const projectEntry = entries.find((e) => e.slug === 'nairobi-mall');
       expect(projectEntry).toBeDefined();
       expect(projectEntry?.loc).toBe('https://murageh.co.ke/projects/nairobi-mall');
@@ -87,7 +106,7 @@ metaDescription: "Commercial project showcase."
       expect(projectEntry?.priority).toBe(0.7);
     });
 
-    it('generates pre-formatted XML chunks ready to be appended without outer urlset', async () => {
+    it('generates pre-formatted XML chunks with absolute image:loc URLs', async () => {
       const chunk = await getSitemapXmlChunk(
         { contentDir: tmpDir },
         { baseUrl: 'https://murageh.co.ke' },
@@ -97,6 +116,8 @@ metaDescription: "Commercial project showcase."
       expect(chunk).not.toContain('<?xml');
       expect(chunk).toContain('<url>');
       expect(chunk).toContain('<loc>https://murageh.co.ke/blog/solar-savings</loc>');
+      expect(chunk).toContain('<image:loc>https://murageh.co.ke/images/blog/kenyan-executive-barbershop.jpg</image:loc>');
+      expect(chunk).not.toContain('<image:loc>/images/');
       expect(chunk).toContain('</url>');
     });
 
@@ -274,6 +295,28 @@ metaDescription: "Commercial project showcase."
       expect(jsonLd.datePublished).toBe('2026-10-18');
       expect(jsonLd.image).toBe('https://murageh.co.ke/images/solar.jpg');
       expect(jsonLd.mainEntityOfPage).toBe('https://murageh.co.ke/blog/solar-savings');
+    });
+
+    it('converts relative featuredImage to absolute URL in JSON-LD', () => {
+      const jsonLd = getDocJsonLd(
+        {
+          slug: 'barbershop-guide',
+          rawSlug: 'barbershop-guide',
+          source: 'markdown',
+          title: 'Best Barbershops in Nairobi',
+          date: '2026-10-18',
+          category: 'Barbershops',
+          excerpt: 'Guide to Nairobi barbershops.',
+          contentHtml: '<p>Content</p>',
+          featuredImage: '/images/blog/kenyan-executive-barbershop.jpg',
+        },
+        {
+          baseUrl: 'https://styledbyus.co.ke',
+          siteName: 'Styled By Us',
+        },
+      );
+
+      expect(jsonLd.image).toBe('https://styledbyus.co.ke/images/blog/kenyan-executive-barbershop.jpg');
     });
 
     it('generates complete OpenGraph and Twitter meta tags', () => {

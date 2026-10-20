@@ -349,11 +349,12 @@ async function getSitemapEntries(opts, options = {}) {
         changefreq = doc["changefreq"];
       }
       const images = [];
-      const imgUrl = doc.featuredImage ?? (typeof doc["image"] === "string" ? doc["image"] : void 0);
-      if (imgUrl) {
+      const rawImgUrl = doc.featuredImage ?? (typeof doc["image"] === "string" ? doc["image"] : void 0);
+      if (rawImgUrl) {
+        const resolvedUrl = !/^https?:\/\//i.test(rawImgUrl) && base ? `${base}${rawImgUrl.startsWith("/") ? "" : "/"}${rawImgUrl}` : rawImgUrl;
         const imgTitle = typeof doc["imageTitle"] === "string" ? doc["imageTitle"] : void 0;
         images.push({
-          url: imgUrl,
+          url: resolvedUrl,
           ...imgTitle !== void 0 ? { title: imgTitle } : {}
         });
       }
@@ -496,6 +497,8 @@ function getDocJsonLd(doc, options) {
   const base = options.baseUrl.replace(/\/+$/, "");
   const url = `${base}/${doc.category.toLowerCase() === "news" ? "news" : "blog"}/${doc.slug}`;
   const type = options.articleType ?? (doc.category.toLowerCase() === "news" ? "NewsArticle" : "BlogPosting");
+  const rawImage = doc.featuredImage ?? (typeof doc["image"] === "string" ? doc["image"] : void 0);
+  const resolvedImage = rawImage ? !/^https?:\/\//i.test(rawImage) && base ? `${base}${rawImage.startsWith("/") ? "" : "/"}${rawImage}` : rawImage : void 0;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": type,
@@ -503,7 +506,7 @@ function getDocJsonLd(doc, options) {
     mainEntityOfPage: url,
     ...doc.excerpt ? { description: doc.excerpt } : {},
     ...doc.date ? { datePublished: doc.date } : {},
-    ...doc.featuredImage ? { image: doc.featuredImage } : {},
+    ...resolvedImage ? { image: resolvedImage } : {},
     ...doc.category ? { articleSection: doc.category } : {},
     author: {
       "@type": "Organization",
@@ -531,7 +534,8 @@ function getDocJsonLd(doc, options) {
 function getDocMetaTags(doc, options) {
   const base = options.baseUrl.replace(/\/+$/, "");
   const canonicalUrl = `${base}/${doc.category.toLowerCase() === "news" ? "news" : "blog"}/${doc.slug}`;
-  const image = doc.featuredImage ?? options.defaultImage;
+  const rawImage = doc.featuredImage ?? options.defaultImage;
+  const image = rawImage ? !/^https?:\/\//i.test(rawImage) && base ? `${base}${rawImage.startsWith("/") ? "" : "/"}${rawImage}` : rawImage : void 0;
   return {
     title: doc.title,
     description: doc.excerpt,

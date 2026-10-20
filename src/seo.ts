@@ -260,11 +260,14 @@ export async function getSitemapEntries(
       }
 
       const images: SitemapImage[] = [];
-      const imgUrl = doc.featuredImage ?? (typeof doc['image'] === 'string' ? doc['image'] : undefined);
-      if (imgUrl) {
+      const rawImgUrl = doc.featuredImage ?? (typeof doc['image'] === 'string' ? doc['image'] : undefined);
+      if (rawImgUrl) {
+        const resolvedUrl = (!/^https?:\/\//i.test(rawImgUrl) && base)
+          ? `${base}${rawImgUrl.startsWith('/') ? '' : '/'}${rawImgUrl}`
+          : rawImgUrl;
         const imgTitle = typeof doc['imageTitle'] === 'string' ? doc['imageTitle'] : undefined;
         images.push({
-          url: imgUrl,
+          url: resolvedUrl,
           ...(imgTitle !== undefined ? { title: imgTitle } : {}),
         });
       }
@@ -572,6 +575,13 @@ export function getDocJsonLd(
   const url = `${base}/${doc.category.toLowerCase() === 'news' ? 'news' : 'blog'}/${doc.slug}`;
   const type = options.articleType ?? (doc.category.toLowerCase() === 'news' ? 'NewsArticle' : 'BlogPosting');
 
+  const rawImage = doc.featuredImage ?? (typeof doc['image'] === 'string' ? doc['image'] : undefined);
+  const resolvedImage = rawImage
+    ? (!/^https?:\/\//i.test(rawImage) && base
+        ? `${base}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`
+        : rawImage)
+    : undefined;
+
   const jsonLd: JsonLdArticle = {
     '@context': 'https://schema.org',
     '@type': type,
@@ -579,7 +589,7 @@ export function getDocJsonLd(
     mainEntityOfPage: url,
     ...(doc.excerpt ? { description: doc.excerpt } : {}),
     ...(doc.date ? { datePublished: doc.date } : {}),
-    ...(doc.featuredImage ? { image: doc.featuredImage } : {}),
+    ...(resolvedImage ? { image: resolvedImage } : {}),
     ...(doc.category ? { articleSection: doc.category } : {}),
     author: {
       '@type': 'Organization',
@@ -624,7 +634,12 @@ export function getDocMetaTags(
 ): DocMetaTags {
   const base = options.baseUrl.replace(/\/+$/, '');
   const canonicalUrl = `${base}/${doc.category.toLowerCase() === 'news' ? 'news' : 'blog'}/${doc.slug}`;
-  const image = doc.featuredImage ?? options.defaultImage;
+  const rawImage = doc.featuredImage ?? options.defaultImage;
+  const image = rawImage
+    ? (!/^https?:\/\//i.test(rawImage) && base
+        ? `${base}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`
+        : rawImage)
+    : undefined;
 
   return {
     title: doc.title,
