@@ -18,6 +18,7 @@ export {
   parseMarkdownFile,
   getAllDocs as getAllMarkdownDocs,
   getDocBySlug as getMarkdownDocBySlug,
+  extractSchemaJsonLd,
 } from './markdown.js';
 
 // SEO & Sitemap Engine

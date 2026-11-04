@@ -31,19 +31,28 @@ async function processMarkdown(content) {
 }
 function extractSchemaJsonLd(rawContent) {
   const trimmed = rawContent.trimEnd();
-  const trailingJsonBlockRegex = /```(?:json|ld\+json)?\s*\n([\s\S]*?)\n```$/;
-  const match = trailingJsonBlockRegex.exec(trimmed);
-  if (match && match[1]) {
-    const candidate = match[1].trim();
-    if (candidate.includes("schema.org")) {
-      try {
-        const parsed = JSON.parse(candidate);
-        if (typeof parsed === "object" && parsed !== null) {
-          const cleanContent = trimmed.slice(0, match.index).trimEnd();
-          return { cleanContent, customJsonLd: parsed };
-        }
-      } catch {
+  if (!trimmed.endsWith("```")) {
+    return { cleanContent: rawContent };
+  }
+  const contentBeforeClosing = trimmed.slice(0, trimmed.length - 3).trimEnd();
+  const lastFenceIndex = contentBeforeClosing.lastIndexOf("```");
+  if (lastFenceIndex === -1) {
+    return { cleanContent: rawContent };
+  }
+  const fenceBlock = contentBeforeClosing.slice(lastFenceIndex);
+  const match = /^```(?:json|ld\+json)?\s*\n([\s\S]*)$/.exec(fenceBlock);
+  if (!match || !match[1]) {
+    return { cleanContent: rawContent };
+  }
+  const candidate = match[1].trim();
+  if (candidate.includes("schema.org")) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (typeof parsed === "object" && parsed !== null) {
+        const cleanContent = trimmed.slice(0, lastFenceIndex).trimEnd();
+        return { cleanContent, customJsonLd: parsed };
       }
+    } catch {
     }
   }
   return { cleanContent: rawContent };

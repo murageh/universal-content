@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { getAllDocs, getDocBySlug, formatDate, processMarkdown } from '../markdown.js';
+import { getAllDocs, getDocBySlug, formatDate, processMarkdown, extractSchemaJsonLd } from '../markdown.js';
 
 // ─── Temp fixture directory ───────────────────────────────────────────────────
 
@@ -145,6 +145,54 @@ category: "Dev"
     } finally {
       rmSync(customDir, { recursive: true, force: true });
     }
+  });
+
+  it('correctly extracts trailing JSON-LD when article contains earlier code blocks', () => {
+    const md = `# Article Title
+
+Here is an example code snippet:
+
+\`\`\`bash
+pnpm install
+\`\`\`
+
+And some ASCII flow:
+
+\`\`\`
+[Step 1] -> [Step 2]
+\`\`\`
+
+Conclusion.
+
+\`\`\`json
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": []
+}
+\`\`\``;
+
+    const result = extractSchemaJsonLd(md);
+    expect(result.customJsonLd).toBeDefined();
+    expect((result.customJsonLd as Record<string, unknown>)?.['@type']).toBe('FAQPage');
+    expect(result.cleanContent).toContain('```bash\npnpm install\n```');
+    expect(result.cleanContent).toContain('```\n[Step 1] -> [Step 2]\n```');
+    expect(result.cleanContent).not.toContain('"@context": "https://schema.org"');
+  });
+
+  it('leaves content untouched when trailing block is not JSON-LD', () => {
+    const md = `# Readme\n\n\`\`\`javascript\nconsole.log("hello");\n\`\`\``;
+    const result = extractSchemaJsonLd(md);
+    expect(result.customJsonLd).toBeUndefined();
+    expect(result.cleanContent).toBe(md);
+  });
+
+  it('handles JSON-LD arrays inside trailing code fence', () => {
+    const md = `# Post\n\n\`\`\`json\n[\n  {\n    "@context": "https://schema.org",\n    "@type": "FAQPage"\n  }\n]\n\`\`\``;
+    const result = extractSchemaJsonLd(md);
+    expect(Array.isArray(result.customJsonLd)).toBe(true);
+    expect((result.customJsonLd as Array<Record<string, unknown>>)?.[0]?.['@type']).toBe('FAQPage');
+    expect(result.cleanContent).toBe('# Post');
   });
 });
 

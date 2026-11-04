@@ -44,27 +44,46 @@ export async function processMarkdown(content: string): Promise<string> {
  * Extracts trailing Schema.org JSON-LD code blocks from markdown content.
  * Strips the block from the content so it does not render into reader HTML,
  * and parses it into a structured object or array.
+ * Uses a reverse last-fence lookup to prevent swallowing earlier code blocks in the article.
  */
-function extractSchemaJsonLd(rawContent: string): {
+export function extractSchemaJsonLd(rawContent: string): {
   cleanContent: string;
   customJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
 } {
   const trimmed = rawContent.trimEnd();
-  const trailingJsonBlockRegex = /```(?:json|ld\+json)?\s*\n([\s\S]*?)\n```$/;
-  const match = trailingJsonBlockRegex.exec(trimmed);
 
-  if (match && match[1]) {
-    const candidate = match[1].trim();
-    if (candidate.includes('schema.org')) {
-      try {
-        const parsed = JSON.parse(candidate) as Record<string, unknown> | Array<Record<string, unknown>>;
-        if (typeof parsed === 'object' && parsed !== null) {
-          const cleanContent = trimmed.slice(0, match.index).trimEnd();
-          return { cleanContent, customJsonLd: parsed };
-        }
-      } catch {
-        // If not valid JSON, leave content untouched
+  // Must end with a closing code fence
+  if (!trimmed.endsWith('```')) {
+    return { cleanContent: rawContent };
+  }
+
+  // Find the closing fence start (3 characters from end)
+  const contentBeforeClosing = trimmed.slice(0, trimmed.length - 3).trimEnd();
+
+  // Find the opening fence of the LAST code block
+  const lastFenceIndex = contentBeforeClosing.lastIndexOf('```');
+  if (lastFenceIndex === -1) {
+    return { cleanContent: rawContent };
+  }
+
+  const fenceBlock = contentBeforeClosing.slice(lastFenceIndex);
+  // Match only the header and body of this single last code block
+  const match = /^```(?:json|ld\+json)?\s*\n([\s\S]*)$/.exec(fenceBlock);
+  if (!match || !match[1]) {
+    return { cleanContent: rawContent };
+  }
+
+  const candidate = match[1].trim();
+  if (candidate.includes('schema.org')) {
+    try {
+      const parsed = JSON.parse(candidate) as Record<string, unknown> | Array<Record<string, unknown>>;
+      if (typeof parsed === 'object' && parsed !== null) {
+        // Strip only from the last fence index
+        const cleanContent = trimmed.slice(0, lastFenceIndex).trimEnd();
+        return { cleanContent, customJsonLd: parsed };
       }
+    } catch {
+      // JSON syntax error - leave content untouched
     }
   }
 

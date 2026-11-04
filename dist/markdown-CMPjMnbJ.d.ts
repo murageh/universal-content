@@ -19,6 +19,16 @@ import { C as ContentType, a as MarkdownDoc } from './types-BkjruK9s.js';
  */
 declare function processMarkdown(content: string): Promise<string>;
 /**
+ * Extracts trailing Schema.org JSON-LD code blocks from markdown content.
+ * Strips the block from the content so it does not render into reader HTML,
+ * and parses it into a structured object or array.
+ * Uses a reverse last-fence lookup to prevent swallowing earlier code blocks in the article.
+ */
+declare function extractSchemaJsonLd(rawContent: string): {
+    cleanContent: string;
+    customJsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+};
+/**
  * Parses a single Markdown file into a MarkdownDoc.
  * @param filePath - absolute path to the .md file.
  * @param slug     - derived from the filename when not provided.
@@ -48,4 +58,4 @@ declare function getDocBySlug(contentDir: string, type: ContentType, slug: strin
  */
 declare function formatDate(dateStr: string, locale?: string): string;
 
-export { getDocBySlug as a, processMarkdown as b, formatDate as f, getAllDocs as g, parseMarkdownFile as p };
+export { getDocBySlug as a, processMarkdown as b, extractSchemaJsonLd as e, formatDate as f, getAllDocs as g, parseMarkdownFile as p };

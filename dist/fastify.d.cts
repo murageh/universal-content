@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { G as GetSitemapOptions, S as SitemapEntry, C as ContentLayerOptions } from './seo-rSC6yWun.cjs';
 export { g as generateEtag, a as generateSitemapXml, b as getAllDocs, c as getDocBySlug, d as getDocJsonLd, e as getDocMetaTags, f as getSitemapEntries, h as getSitemapXmlChunk, m as mergeSitemapUrlsets, i as mergeSitemaps, p as parseSitemapXml } from './seo-rSC6yWun.cjs';
 import { ContentType, UnifiedDoc, RedisClientOrOptions } from './index.cjs';
-export { f as formatDate } from './markdown-BuOc7Zjs.cjs';
+export { f as formatDate } from './markdown-Cx394lLf.cjs';
 import 'ioredis';
 
 /**
